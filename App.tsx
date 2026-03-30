@@ -28,7 +28,7 @@ const App: React.FC = () => {
     themeColor: '#2459a9',
     gradientEndColor: '#60a5fa',
     logoStyle: 'circle',
-    schoolLogoUrl: 'https://lh3.googleusercontent.com/d/1UXDrhKgeSjfFks_oXIMOVYgxFG_Bh1nm',
+    schoolLogoUrl: 'https://lh3.googleusercontent.com/d/1ffr_74cOvUr0VGVDbMIMVLDCT3hluAkI',
     antiCheat: { isActive: true, freezeDurationSeconds: 15, alertText: 'Violation!', enableSound: true }
   });
 
@@ -188,7 +188,7 @@ const App: React.FC = () => {
               
               <div className="flex justify-center mb-6">
                   <img 
-                      src="https://lh3.googleusercontent.com/d/1UXDrhKgeSjfFks_oXIMOVYgxFG_Bh1nm" 
+                      src="https://lh3.googleusercontent.com/d/1ffr_74cOvUr0VGVDbMIMVLDCT3hluAkI" 
                       className="w-40 h-auto object-contain animate-float-slow filter drop-shadow-xl" 
                       alt="Logo CBT SPENDAPOL" 
                       referrerPolicy="no-referrer"

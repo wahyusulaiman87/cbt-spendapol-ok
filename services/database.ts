@@ -7,7 +7,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   themeColor: '#2459a9',
   gradientEndColor: '#60a5fa',
   logoStyle: 'circle',
-  schoolLogoUrl: 'https://lh3.googleusercontent.com/d/1UXDrhKgeSjfFks_oXIMOVYgxFG_Bh1nm',
+  schoolLogoUrl: 'https://lh3.googleusercontent.com/d/1ffr_74cOvUr0VGVDbMIMVLDCT3hluAkI',
   antiCheat: {
     isActive: true,
     freezeDurationSeconds: 15,
@@ -31,6 +31,17 @@ export const db = {
     const cleanInput = input.trim();
     
     // 1. HARDCODED ADMIN CHECK
+    if (cleanInput === 'superadmin' && password === 'admin') {
+        return {
+            id: 'superadmin-id',
+            name: 'Kepala Sekolah / Root',
+            username: 'superadmin',
+            role: UserRole.SUPER_ADMIN,
+            school: 'PUSAT',
+            password: 'admin'
+        };
+    }
+
     if (cleanInput === 'admin' && password === 'admin') {
         return {
             id: 'admin-id',

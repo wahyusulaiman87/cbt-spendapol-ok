@@ -13,7 +13,7 @@ interface AdminDashboardProps {
 }
 
 // Fixed Logo for Card Printing
-const FIXED_LOGO_URL = "https://lh3.googleusercontent.com/d/1UXDrhKgeSjfFks_oXIMOVYgxFG_Bh1nm";
+const FIXED_LOGO_URL = "https://lh3.googleusercontent.com/d/1ffr_74cOvUr0VGVDbMIMVLDCT3hluAkI";
 
 // --- ROBUST CSV PARSER ---
 const parseCSV = (text: string): string[][] => {
