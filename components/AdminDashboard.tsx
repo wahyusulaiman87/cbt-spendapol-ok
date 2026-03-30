@@ -129,6 +129,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   // MOBILE SIDEBAR STATE
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  // STUDENT MANUAL ADD STATE
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [nsName, setNsName] = useState('');
+  const [nsNisn, setNsNisn] = useState('');
+  const [nsSchool, setNsSchool] = useState('');
+  const [nsPassword, setNsPassword] = useState('12345');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -364,6 +371,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       } catch (e: any) { alert("Gagal import siswa. Pastikan menggunakan Template CSV yang benar."); }
       setIsProcessingImport(false);
       e.target.value = '';
+  };
+
+  const handleAddStudent = async () => {
+      if (!nsName.trim() || !nsNisn.trim() || !nsSchool.trim()) {
+          return alert("Semua field wajib diisi!");
+      }
+      
+      const newStudent: User = {
+          id: `manual-${Date.now()}`,
+          name: nsName.trim(),
+          nisn: nsNisn.trim(),
+          username: nsNisn.trim(),
+          password: nsPassword.trim() || '12345',
+          school: nsSchool.trim(),
+          role: UserRole.STUDENT
+      };
+      
+      await db.importStudents([newStudent]);
+      setIsAddStudentModalOpen(false);
+      setNsName('');
+      setNsNisn('');
+      setNsSchool('');
+      setNsPassword('12345');
+      await loadData();
+      alert("Peserta berhasil ditambahkan!");
   };
 
   const handleExportResultsExcel = () => {
@@ -1038,8 +1070,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           <div className="p-4 md:p-6 border-b border-white/10 flex items-center justify-center md:justify-start md:space-x-3">
               <BookOpen size={28} className="text-white drop-shadow-md flex-shrink-0" />
               <div className="hidden md:block overflow-hidden whitespace-nowrap">
-                  <h1 className="font-bold text-lg tracking-wide">ADMIN SD</h1>
-                  <p className="text-xs text-blue-100 opacity-80">Panel Sekolah Dasar</p>
+                  <h1 className="font-bold text-lg tracking-wide">Admin Ujian</h1>
+                  <p className="text-xs text-blue-100 opacity-80">Dashboard Admin</p>
               </div>
           </div>
           <nav className="flex-1 p-2 md:p-4 overflow-y-auto custom-scrollbar">
@@ -1048,7 +1080,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               <NavItem id="HASIL_UJIAN" label="Hasil Ujian" icon={ClipboardList} />
               <div className="my-2 border-t border-white/10"></div>
               <NavItem id="BANK_SOAL" label="Bank Soal" icon={Database} />
-              <NavItem id="MAPPING" label="Mapping Sekolah" icon={Map} />
+              <NavItem id="MAPPING" label="Mapping Kelas" icon={Map} />
               <NavItem id="PESERTA" label="Data Peserta" icon={RotateCcw} />
               <NavItem id="CETAK_KARTU" label="Cetak Kartu" icon={Printer} />
               <div className="my-2 border-t border-white/10"></div>
@@ -1251,7 +1283,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                    <div className="flex justify-between items-center mb-6">
                        <h3 className="font-bold text-lg">Data Peserta</h3>
                        <div className="flex gap-2">
-                           <button onClick={downloadStudentTemplate} className="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center"><FileText size={16} className="mr-2"/> Template CSV</button>
+                           <button onClick={() => setIsAddStudentModalOpen(true)} className="bg-orange-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center hover:bg-orange-700 shadow-sm transition transform active:scale-95"><Plus size={16} className="mr-2"/> Tambah Peserta</button>
+                            <button onClick={downloadStudentTemplate} className="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center"><FileText size={16} className="mr-2"/> Template CSV</button>
                            <button onClick={triggerImportStudents} className="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center hover:bg-blue-700"><Upload size={16} className="mr-2"/> Import Data</button>
                        </div>
                    </div>
@@ -1744,6 +1777,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           ))}
                       </div>
                       <button onClick={handleSaveQuestion} className="bg-green-600 text-white w-full py-3 rounded font-bold">Simpan Soal</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* ADD MANUAL STUDENT MODAL */}
+      {isAddStudentModalOpen && (
+          <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+                  <div className="p-5 text-white flex justify-between items-center" style={{ background: `linear-gradient(to right, ${themeColor}, #60a5fa)` }}>
+                      <h3 className="font-bold text-xl flex items-center"><Plus className="mr-2" size={24}/> Tambah Peserta Baru</h3>
+                      <button onClick={() => setIsAddStudentModalOpen(false)} className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition"><X size={20}/></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <div>
+                          <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Nama Lengkap Siswa</label>
+                          <input 
+                              className="w-full border-2 border-gray-100 rounded-xl p-3 text-sm font-medium focus:border-blue-400 focus:outline-none transition bg-gray-50 focus:bg-white" 
+                              placeholder="Contoh: Ahmad Fauzi" 
+                              value={nsName} 
+                              onChange={e => setNsName(e.target.value)}
+                          />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-xs font-bold uppercase text-gray-500 mb-1">NISN / Username</label>
+                              <input 
+                                  className="w-full border-2 border-gray-100 rounded-xl p-3 text-sm font-mono font-bold focus:border-blue-400 focus:outline-none transition bg-gray-50 focus:bg-white" 
+                                  placeholder="12345678" 
+                                  value={nsNisn} 
+                                  onChange={e => setNsNisn(e.target.value)}
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Password Default</label>
+                              <input 
+                                  className="w-full border-2 border-gray-100 rounded-xl p-3 text-sm font-mono focus:border-blue-400 focus:outline-none transition bg-gray-50 focus:bg-white" 
+                                  placeholder="12345" 
+                                  value={nsPassword} 
+                                  onChange={e => setNsPassword(e.target.value)}
+                              />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Lembaga / Kelas</label>
+                          <input 
+                              className="w-full border-2 border-gray-100 rounded-xl p-3 text-sm font-medium focus:border-blue-400 focus:outline-none transition bg-gray-50 focus:bg-white" 
+                              placeholder="Contoh: KELAS 9A" 
+                              value={nsSchool} 
+                              onChange={e => setNsSchool(e.target.value)}
+                          />
+                          <p className="text-[10px] text-gray-400 mt-1 italic">* Digunakan untuk filter mapping jadwal ujian.</p>
+                      </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 border-t flex gap-3">
+                      <button onClick={() => setIsAddStudentModalOpen(false)} className="flex-1 py-3 text-gray-500 font-bold text-sm hover:bg-gray-200 rounded-xl transition">Batal</button>
+                      <button onClick={handleAddStudent} className="flex-[2] py-3 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-xl transition transform active:scale-95 flex items-center justify-center">
+                          <Save size={18} className="mr-2"/> Simpan Peserta
+                      </button>
                   </div>
               </div>
           </div>
