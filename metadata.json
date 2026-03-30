@@ -1,0 +1,7 @@
+{
+  "name": "CBT Spendapol",
+  "description": "Aplikasi Ujian Tes Online SMPN 2 Gempol dengan fitur anti-curang dan manajemen bertingkat.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
