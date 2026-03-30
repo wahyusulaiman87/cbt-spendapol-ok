@@ -27,12 +27,14 @@ function shuffleArray<T>(array: T[]): T[] {
 // Helper to shuffle options inside a question and update the correctIndex map
 const processQuestionsWithShuffledOptions = (questions: Question[]): Question[] => {
     return questions.map(q => {
+        if (q.type === 'URAIAN') return q; // No options to shuffle
+
         // 1. Map options to objects to track correctness
         const mappedOptions = q.options.map((opt, idx) => {
             let isCorrect = false;
             if (q.type === 'PG') {
                 isCorrect = idx === q.correctIndex;
-            } else if (['CHECKLIST', 'PG_KOMPLEKS'].includes(q.type)) {
+            } else if (['PG_KOMPLEKS', 'PG_BS'].includes(q.type)) {
                 isCorrect = q.correctIndices?.includes(idx) ?? false;
             }
             return { text: opt, isCorrect };
@@ -50,7 +52,7 @@ const processQuestionsWithShuffledOptions = (questions: Question[]): Question[] 
 
         if (q.type === 'PG') {
             newCorrectIndex = shuffledMapped.findIndex(m => m.isCorrect);
-        } else if (['CHECKLIST', 'PG_KOMPLEKS'].includes(q.type)) {
+        } else if (['PG_KOMPLEKS', 'PG_BS'].includes(q.type)) {
             newCorrectIndices = shuffledMapped
                 .map((m, idx) => m.isCorrect ? idx : -1)
                 .filter(idx => idx !== -1);
@@ -251,6 +253,13 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
       setAnswers(newAnswers);
   };
 
+  const handleBinaryChoice = (optionIndex: number, value: 'B' | 'S') => {
+    const newAnswers = [...answers];
+    const current = newAnswers[currentQuestionIndex] || {};
+    newAnswers[currentQuestionIndex] = { ...current, [optionIndex]: value };
+    setAnswers(newAnswers);
+  };
+
   const toggleDoubt = () => {
     const newDoubts = [...markedDoubts];
     newDoubts[currentQuestionIndex] = !newDoubts[currentQuestionIndex];
@@ -266,13 +275,23 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
 
           if (q.type === 'PG' && answer === q.correctIndex) {
               score += q.points;
-          } else if ((q.type === 'PG_KOMPLEKS' || q.type === 'CHECKLIST') && q.correctIndices) {
+          } else if (q.type === 'PG_KOMPLEKS' && q.correctIndices) {
               // Basic logic: if selected array matches correctIndices array (sorted)
               const selected = (answer as number[]).sort();
               const correct = [...q.correctIndices].sort();
               if (JSON.stringify(selected) === JSON.stringify(correct)) {
                   score += q.points;
               }
+          } else if (q.type === 'PG_BS' && q.correctIndices) {
+              const ansObj = answer as Record<number, 'B' | 'S'>;
+              let allCorrect = true;
+              q.options.forEach((_, optIdx) => {
+                  const isCorrectBenar = q.correctIndices?.includes(optIdx);
+                  const studentAns = ansObj[optIdx];
+                  if (isCorrectBenar && studentAns !== 'B') allCorrect = false;
+                  if (!isCorrectBenar && studentAns !== 'S') allCorrect = false;
+              });
+              if (allCorrect) score += q.points;
           }
           // Essay score is 0 by default until graded
       });
@@ -338,13 +357,13 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                             <div className="w-8 h-8 rounded-full border-2 border-gray-300 mr-3 flex-shrink-0 flex items-center justify-center radio-dot transition-all font-bold text-gray-400" style={{ '--tw-border-color': themeColor } as React.CSSProperties}>
                                 {String.fromCharCode(65+idx)}
                             </div>
-                            <span className={`${getFontSizeClass()} text-gray-700`}>{opt}</span>
+                            <div className={`${getFontSizeClass()} text-gray-700`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                         </div>
                     </label>
                 ))}
             </div>
           );
-      } else if (q.type === 'PG_KOMPLEKS' || q.type === 'CHECKLIST') {
+      } else if (q.type === 'PG_KOMPLEKS') {
           return (
             <div className="grid grid-cols-1 gap-3">
                 <p className="text-sm italic mb-2" style={{ color: themeColor }}>* Pilih jawaban lebih dari satu</p>
@@ -360,9 +379,34 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                             <div className="w-6 h-6 rounded border-2 border-gray-300 mr-3 flex-shrink-0 flex items-center justify-center peer-checked:bg-blue-50 peer-checked:border-blue-500">
                                 <CheckCircle size={14} className="text-white opacity-0 peer-checked:opacity-100" />
                             </div>
-                            <span className={`${getFontSizeClass()} text-gray-700`}>{opt}</span>
+                            <div className={`${getFontSizeClass()} text-gray-700`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                         </div>
                     </label>
+                ))}
+            </div>
+          );
+      } else if (q.type === 'PG_BS') {
+          return (
+            <div className="grid grid-cols-1 gap-3">
+                <p className="text-sm italic mb-2" style={{ color: themeColor }}>* Tentukan Benar (B) atau Salah (S) untuk setiap pernyataan</p>
+                {q.options?.map((opt, idx) => (
+                    <div key={idx} className="w-full p-3 rounded-lg border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-all">
+                        <div className={`${getFontSizeClass()} text-gray-700 flex-1 mr-4`} dangerouslySetInnerHTML={{ __html: opt }}></div>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => handleBinaryChoice(idx, 'B')}
+                                className={`w-10 h-10 rounded-lg font-bold transition-all ${ (answers[currentQuestionIndex] || {})[idx] === 'B' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }`}
+                            >
+                                B
+                            </button>
+                            <button 
+                                onClick={() => handleBinaryChoice(idx, 'S')}
+                                className={`w-10 h-10 rounded-lg font-bold transition-all ${ (answers[currentQuestionIndex] || {})[idx] === 'S' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }`}
+                            >
+                                S
+                            </button>
+                        </div>
+                    </div>
                 ))}
             </div>
           );
@@ -436,7 +480,13 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                   
                   <div className="grid grid-cols-5 gap-3">
                       {activeQuestions.map((q, idx) => {
-                          const isAnswered = answers[idx] !== null && answers[idx] !== undefined && (Array.isArray(answers[idx]) ? answers[idx].length > 0 : String(answers[idx]).trim() !== '');
+                          const isAnswered = answers[idx] !== null && answers[idx] !== undefined && (
+                              Array.isArray(answers[idx]) 
+                                ? answers[idx].length > 0 
+                                : typeof answers[idx] === 'object'
+                                  ? Object.keys(answers[idx]).length > 0
+                                  : String(answers[idx]).trim() !== ''
+                          );
                           const isCurrent = currentQuestionIndex === idx;
                           const isDoubt = markedDoubts[idx];
                           
@@ -605,9 +655,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                      </div>
                  </div>
             )}
-            <div className={`${getFontSizeClass()} text-gray-800 leading-relaxed whitespace-pre-wrap`}>
-                {currentQ.text}
-            </div>
+            <div className={`${getFontSizeClass()} text-gray-800 leading-relaxed`} dangerouslySetInnerHTML={{ __html: currentQ.text }}></div>
         </div>
 
         {/* Vertical Divider (Hidden on mobile) */}

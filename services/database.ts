@@ -119,17 +119,26 @@ export const db = {
             .eq('subject_id', sub.id);
         
         const mappedQuestions: Question[] = (questions || []).map((q: any) => {
+            const type = (q["Tipe Soal"] as any) || 'PG';
+            const keyStr = q.Kunci ? q.Kunci.trim().toUpperCase() : 'A';
+            
             let cIndex = 0;
-            const keyChar = q.Kunci ? q.Kunci.trim().toUpperCase() : 'A';
-            if (keyChar === 'B') cIndex = 1;
-            if (keyChar === 'C') cIndex = 2;
-            if (keyChar === 'D') cIndex = 3;
+            let cIndices: number[] = [];
+
+            if (type === 'PG_KOMPLEKS' || type === 'PG_BS') {
+                const parts = keyStr.split(/[;,]/);
+                cIndices = parts.map((p: string) => p.trim().charCodeAt(0) - 65).filter((idx: number) => idx >= 0 && idx < 10);
+                if (cIndices.length > 0) cIndex = cIndices[0];
+            } else {
+                cIndex = keyStr.charCodeAt(0) - 65;
+                if (cIndex < 0 || cIndex > 3) cIndex = 0;
+            }
             
             return {
                 id: q.id,
                 subjectId: q.subject_id,
                 nomor: q.Nomor,
-                type: (q["Tipe Soal"] as any) || 'PG',
+                type: type,
                 text: q.Soal || '',
                 imgUrl: q["Url Gambar"] || undefined,
                 options: [
@@ -137,8 +146,9 @@ export const db = {
                     q["Opsi B"] || '', 
                     q["Opsi C"] || '', 
                     q["Opsi D"] || ''
-                ],
+                ].filter(o => o !== '' || type === 'PG'), // Keep empty for PG to maintain index if needed, but usually better to filter
                 correctIndex: cIndex,
+                correctIndices: cIndices,
                 points: parseInt(q.Bobot || '10')
             };
         });
@@ -195,8 +205,16 @@ export const db = {
 
   addQuestions: async (examId: string, questions: Question[]): Promise<void> => {
       const payload = questions.map((q, idx) => {
-          const keyMap = ['A', 'B', 'C', 'D'];
-          const keyChar = q.correctIndex !== undefined ? keyMap[q.correctIndex] : 'A';
+          const keyMap = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+          let keyChar = 'A';
+          
+          if (q.type === 'PG_KOMPLEKS' || q.type === 'PG_BS') {
+              keyChar = (q.correctIndices || []).map(idx => keyMap[idx]).join(";");
+          } else if (q.type === 'PG') {
+              keyChar = q.correctIndex !== undefined ? keyMap[q.correctIndex] : 'A';
+          } else {
+              keyChar = '';
+          }
 
           return {
               subject_id: examId,

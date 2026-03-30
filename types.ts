@@ -23,7 +23,7 @@ export interface User {
   isLocked?: boolean;
 }
 
-export type QuestionType = 'PG' | 'PG_KOMPLEKS' | 'CHECKLIST' | 'URAIAN';
+export type QuestionType = 'PG' | 'PG_KOMPLEKS' | 'PG_BS' | 'URAIAN';
 
 // Mapped from 'questions' table
 export interface Question {

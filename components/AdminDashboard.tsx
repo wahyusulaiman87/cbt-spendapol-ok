@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import JSZip from 'jszip';
 import { User, Exam, UserRole, Question, QuestionType, ExamResult, AppSettings } from '../types';
 import { db } from '../services/database'; 
 import { Plus, BookOpen, Save, LogOut, Loader2, Key, RotateCcw, Clock, Upload, Download, FileText, LayoutDashboard, Settings, Printer, Filter, Calendar, FileSpreadsheet, Lock, Link, Edit, ShieldAlert, Activity, ClipboardList, Search, Unlock, Trash2, Database, School, Shuffle, X, CheckSquare, Map, CalendarDays, Flame, Volume2, AlertTriangle, UserX, Info, Check, Monitor, Users, GraduationCap, CheckCircle, XCircle, ArrowLeft, BarChart3, PieChart, Menu } from 'lucide-react';
@@ -95,6 +96,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   // QUESTION BANK STATE
   const [viewingQuestionsExam, setViewingQuestionsExam] = useState<Exam | null>(null);
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
+  const [isWordGuideOpen, setIsWordGuideOpen] = useState(false);
   const [targetExamForAdd, setTargetExamForAdd] = useState<Exam | null>(null);
   
   // MANUAL QUESTION FORM
@@ -103,12 +105,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [nqImg, setNqImg] = useState<string>('');
   const [nqOptions, setNqOptions] = useState<string[]>(['', '', '', '']);
   const [nqCorrectIndex, setNqCorrectIndex] = useState<number>(0);
+  const [nqCorrectIndices, setNqCorrectIndices] = useState<number[]>([]);
   const [nqPoints, setNqPoints] = useState<number>(10);
 
   // IMPORT REFS
   const [importTargetExamId, setImportTargetExamId] = useState<string | null>(null);
   const studentFileRef = useRef<HTMLInputElement>(null);
   const questionFileRef = useRef<HTMLInputElement>(null);
+  const zipFileRef = useRef<HTMLInputElement>(null);
   
   // FILTERS & CARD PRINTING
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState<string>('ALL'); // For Peserta & Monitoring
@@ -249,11 +253,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           text: nqText,
           imgUrl: nqImg || undefined,
           points: Number(nqPoints) || 0,
-          options: nqOptions,
+          options: nqType === 'URAIAN' ? [] : nqOptions.filter(o => o.trim() !== ''),
           correctIndex: nqCorrectIndex,
+          correctIndices: nqCorrectIndices,
       };
       await db.addQuestions(targetExamForAdd.id, [newQuestion]);
       setIsAddQuestionModalOpen(false);
+      // Reset form
+      setNqText('');
+      setNqImg('');
+      setNqOptions(['', '', '', '']);
+      setNqCorrectIndex(0);
+      setNqCorrectIndices([]);
+      setNqPoints(10);
       loadData();
       alert("Soal berhasil ditambahkan!");
   };
@@ -261,7 +273,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const downloadQuestionTemplate = () => {
       const headers = "No,Tipe,Jenis,Soal,Url Gambar,Opsi A,Opsi B,Opsi C,Opsi D,Kunci,Bobot";
       const example1 = "1,PG,UMUM,Siapa presiden pertama RI?,,Soekarno,Hatta,Habibie,Gus Dur,A,10";
-      const blob = new Blob([headers + "\n" + example1], { type: 'text/csv;charset=utf-8;' });
+      const example2 = "2,PG_KOMPLEKS,UMUM,Manakah yang merupakan buah?,,Apel,Bayam,Jeruk,Wortel,A;C,10";
+      const example3 = "3,PG_BS,UMUM,Matahari terbit dari timur.,,Benar,Salah,,,A,10";
+      const example4 = "4,URAIAN,UMUM,Jelaskan proses fotosintesis!,,,,,,,10";
+      const blob = new Blob([headers + "\n" + example1 + "\n" + example2 + "\n" + example3 + "\n" + example4], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'TEMPLATE_SOAL_DB.csv'; link.click();
   };
   
@@ -272,15 +287,280 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'TEMPLATE_SISWA_DB.csv'; link.click();
   };
 
+  const downloadWordTemplate = async () => {
+      const zip = new JSZip();
+      
+      // [Content_Types].xml
+      zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`);
+
+      // _rels/.rels
+      zip.folder("_rels")!.file(".rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+      // word/_rels/document.xml.rels
+      zip.folder("word")!.folder("_rels")!.file("document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+
+      // word/styles.xml (minimal)
+      zip.folder("word")!.file("styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault>
+      <w:rPr>
+        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+        <w:sz w:val="24"/>
+      </w:rPr>
+    </w:rPrDefault>
+  </w:docDefaults>
+</w:styles>`);
+
+      // word/document.xml
+      const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>TEMPLATE SOAL UJIAN (FORMAT MICROSOFT WORD)</w:t></w:r></w:p>
+    <w:p><w:r><w:t>--------------------------------------------------</w:t></w:r></w:p>
+    <w:p><w:r><w:t></w:t></w:r></w:p>
+    <w:p><w:r><w:t>1. Siapa presiden pertama Republik Indonesia?</w:t></w:r></w:p>
+    <w:p><w:r><w:t>a. Soekarno</w:t></w:r></w:p>
+    <w:p><w:r><w:t>b. Mohammad Hatta</w:t></w:r></w:p>
+    <w:p><w:r><w:t>c. B.J. Habibie</w:t></w:r></w:p>
+    <w:p><w:r><w:t>d. Abdurrahman Wahid</w:t></w:r></w:p>
+    <w:p><w:r><w:t>#Kunci: A</w:t></w:r></w:p>
+    <w:p><w:r><w:t></w:t></w:r></w:p>
+    <w:p><w:r><w:t>2. Manakah yang merupakan buah-buahan? (Pilihan Ganda Kompleks)</w:t></w:r></w:p>
+    <w:p><w:r><w:t>#Jenis: MA</w:t></w:r></w:p>
+    <w:p><w:r><w:t>a. 1^Apel</w:t></w:r></w:p>
+    <w:p><w:r><w:t>b. Bayam</w:t></w:r></w:p>
+    <w:p><w:r><w:t>c. 1^Jeruk</w:t></w:r></w:p>
+    <w:p><w:r><w:t>d. Wortel</w:t></w:r></w:p>
+    <w:p><w:r><w:t></w:t></w:r></w:p>
+    <w:p><w:r><w:t>3. Matahari terbit dari arah timur. (Benar/Salah)</w:t></w:r></w:p>
+    <w:p><w:r><w:t>#Jenis: MTF</w:t></w:r></w:p>
+    <w:p><w:r><w:t>a. 4^Benar</w:t></w:r></w:p>
+    <w:p><w:r><w:t>b. Salah</w:t></w:r></w:p>
+    <w:p><w:r><w:t></w:t></w:r></w:p>
+    <w:p><w:r><w:t>4. Jelaskan secara singkat proses fotosintesis pada tumbuhan!</w:t></w:r></w:p>
+    <w:p><w:r><w:t>#Skor: 25</w:t></w:r></w:p>
+    <w:p><w:r><w:t></w:t></w:r></w:p>
+    <w:p><w:r><w:t>CATATAN PENTING:</w:t></w:r></w:p>
+    <w:p><w:r><w:t>- Simpan file ini sebagai .docx</w:t></w:r></w:p>
+    <w:p><w:r><w:t>- Gunakan "Save As -> Web Page Filtered" untuk menghasilkan file .htm</w:t></w:r></w:p>
+    <w:p><w:r><w:t>- Zip file .htm tersebut (bersama foldernya jika ada gambar) sebelum diimport.</w:t></w:r></w:p>
+  </w:body>
+</w:document>`;
+
+      zip.folder("word")!.file("document.xml", documentXml);
+      
+      const blob = await zip.generateAsync({type:"blob"});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'TEMPLATE_SOAL_WORD.docx';
+      link.click();
+  };
+
   const triggerImportQuestions = (examId: string) => { setImportTargetExamId(examId); setTimeout(() => questionFileRef.current?.click(), 100); };
   
+  const triggerImportZip = (examId: string) => { setImportTargetExamId(examId); setTimeout(() => zipFileRef.current?.click(), 100); };
+
+  const onZipFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !importTargetExamId) return;
+
+      setIsProcessingImport(true);
+      try {
+          const zip = await JSZip.loadAsync(file);
+          
+          // Find HTML file
+          const htmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.htm') || name.toLowerCase().endsWith('.html'));
+          if (!htmlFile) throw new Error('File HTML tidak ditemukan dalam ZIP.');
+
+          const htmlContent = await zip.files[htmlFile].async('string');
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+
+          // Find images folder
+          const baseName = htmlFile.replace(/\.(htm|html)$/i, '');
+          const filesFolder = baseName + '_files/';
+          
+          // Map images to data URLs (Search all files in ZIP)
+          const imgMap: Record<string, string> = {};
+          const imageFiles = Object.keys(zip.files).filter(name => 
+              name.toLowerCase().endsWith('.png') || 
+              name.toLowerCase().endsWith('.jpg') || 
+              name.toLowerCase().endsWith('.jpeg') || 
+              name.toLowerCase().endsWith('.gif')
+          );
+          
+          for (const imgPath of imageFiles) {
+              const imgData = await zip.files[imgPath].async('base64');
+              const ext = imgPath.split('.').pop()?.toLowerCase();
+              const mimeType = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/gif';
+              const fileName = imgPath.split(/[/\\]/).pop() || imgPath;
+              imgMap[fileName] = `data:${mimeType};base64,${imgData}`;
+          }
+
+          // Process images in HTML
+          const images = doc.querySelectorAll('img');
+          images.forEach(img => {
+              const src = img.getAttribute('src');
+              if (src) {
+                  const fileName = src.split(/[/\\]/).pop();
+                  if (fileName && imgMap[fileName]) {
+                      img.setAttribute('src', imgMap[fileName]);
+                      // Ensure images are responsive
+                      img.style.maxWidth = '100%';
+                      img.style.height = 'auto';
+                  }
+              }
+          });
+
+          // Parse questions from paragraphs
+          const paragraphs = Array.from(doc.querySelectorAll('p'));
+          const newQuestions: Question[] = [];
+          let currentQuestion: Partial<Question> | null = null;
+          let currentContext: 'QUESTION' | 'OPTION' = 'QUESTION';
+
+          for (const p of paragraphs) {
+              const text = p.textContent?.trim() || '';
+              const html = p.innerHTML;
+
+              // Skip empty paragraphs unless they contain images
+              if (!text && !p.querySelector('img')) continue;
+
+              // Question start pattern: "1. ", "2. ", etc.
+              const qMatch = text.match(/^(\d+)\s*[\.\)]\s*(.*)/s);
+              if (qMatch) {
+                  if (currentQuestion && currentQuestion.text) {
+                      newQuestions.push(currentQuestion as Question);
+                  }
+                  currentQuestion = {
+                      id: `word-${Math.random().toString(36).substr(2, 9)}`,
+                      text: html.replace(new RegExp(qMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ''),
+                      type: 'PG',
+                      options: [],
+                      correctIndices: [],
+                      points: 10
+                  };
+                  currentContext = 'QUESTION';
+                  continue;
+              }
+
+              if (!currentQuestion) continue;
+
+              // Option pattern: "a. ", "b. ", "a) ", etc.
+              const oMatch = text.match(/^([a-e])\s*[\.\)]\s*(.*)/i);
+              if (oMatch) {
+                  let optionText = html.replace(new RegExp(oMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*'), 'i'), '');
+                  if (!optionText.trim() && oMatch[2]) optionText = oMatch[2]; // Fallback to text if HTML replace failed
+                  
+                  // Check for score in option (e.g., "1^Semarang" or "4^Pernyataan Benar")
+                  const scoreMatch = optionText.match(/^(-?\d+)\^(.*)/);
+                  if (scoreMatch) {
+                      const score = parseInt(scoreMatch[1]);
+                      optionText = scoreMatch[2];
+                      if (score > 0) {
+                          if (!currentQuestion.correctIndices) currentQuestion.correctIndices = [];
+                          currentQuestion.correctIndices.push(currentQuestion.options!.length);
+                      }
+                  }
+                  
+                  currentQuestion.options?.push(optionText);
+                  currentContext = 'OPTION';
+                  continue;
+              }
+
+              // Metadata patterns
+              if (text.startsWith('#Kunci:')) {
+                  const key = text.replace('#Kunci:', '').trim().toUpperCase();
+                  const idx = key.charCodeAt(0) - 65; // A=0, B=1...
+                  if (idx >= 0 && idx < 10) {
+                      currentQuestion.correctIndices = [idx];
+                      currentQuestion.correctIndex = idx;
+                  }
+                  continue;
+              }
+
+              if (text.startsWith('#Skor:')) {
+                  currentQuestion.type = 'URAIAN';
+                  const score = parseInt(text.replace('#Skor:', '').trim());
+                  if (!isNaN(score)) currentQuestion.points = score;
+                  continue;
+              }
+
+              if (text.startsWith('#Jenis:')) {
+                  const type = text.replace('#Jenis:', '').trim().toUpperCase();
+                  if (type === 'MA') currentQuestion.type = 'PG_KOMPLEKS';
+                  if (type === 'MTF') currentQuestion.type = 'PG_BS';
+                  continue;
+              }
+
+              // Append to current context if it's not a new question/option/metadata
+              if (currentContext === 'QUESTION') {
+                  currentQuestion.text += '<br/>' + html;
+              } else if (currentContext === 'OPTION' && currentQuestion.options && currentQuestion.options.length > 0) {
+                  const lastIdx = currentQuestion.options.length - 1;
+                  currentQuestion.options[lastIdx] += '<br/>' + html;
+              }
+          }
+
+          if (currentQuestion && currentQuestion.text) {
+              newQuestions.push(currentQuestion as Question);
+          }
+
+          if (newQuestions.length > 0) {
+              await db.addQuestions(importTargetExamId, newQuestions);
+              alert(`Berhasil mengimpor ${newQuestions.length} soal dari Word.`);
+              loadData();
+          } else {
+              alert('Tidak ada soal yang ditemukan dalam format yang benar.');
+          }
+
+      } catch (err) {
+          console.error(err);
+          alert('Gagal mengimpor ZIP: ' + (err instanceof Error ? err.message : 'Format tidak didukung'));
+      } finally {
+          setIsProcessingImport(false);
+          if (zipFileRef.current) zipFileRef.current.value = '';
+      }
+  };
+
   const handleExportQuestions = (exam: Exam) => {
       const headers = ["No", "Tipe", "Jenis", "Soal", "Url Gambar", "Opsi A", "Opsi B", "Opsi C", "Opsi D", "Kunci", "Bobot"];
       const rows = exam.questions.map((q, idx) => {
-          const options = q.options || ["", "", "", ""];
-          const keyMap = ['A', 'B', 'C', 'D'];
-          const keyString = typeof q.correctIndex === 'number' ? keyMap[q.correctIndex] : 'A';
-          return [String(idx + 1), q.type, "UMUM", escapeCSV(q.text), escapeCSV(q.imgUrl), escapeCSV(options[0]), escapeCSV(options[1]), escapeCSV(options[2]), escapeCSV(options[3]), keyString, String(q.points)].join(",");
+          const options = q.options || [];
+          const keyMap = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+          let keyString = '';
+          if (q.type === 'PG_KOMPLEKS' || q.type === 'PG_BS') {
+              keyString = (q.correctIndices || []).map(idx => keyMap[idx]).join(";");
+          } else if (q.type === 'PG') {
+              keyString = typeof q.correctIndex === 'number' ? keyMap[q.correctIndex] : 'A';
+          } else {
+              keyString = '';
+          }
+          return [
+              String(idx + 1), 
+              q.type, 
+              "UMUM", 
+              escapeCSV(q.text), 
+              escapeCSV(q.imgUrl), 
+              escapeCSV(options[0] || ''), 
+              escapeCSV(options[1] || ''), 
+              escapeCSV(options[2] || ''), 
+              escapeCSV(options[3] || ''), 
+              keyString, 
+              String(q.points)
+          ].join(",");
       });
       const blob = new Blob([headers.join(",") + "\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.setAttribute('download', `BANK_SOAL_${exam.subject}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -294,25 +574,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
       const processRows = (rows: any[]) => {
           const newQuestions: Question[] = rows.map((row, idx) => {
-             let text, img, oa, ob, oc, od, key, points;
+             let type, text, img, oa, ob, oc, od, key, points;
              if (Array.isArray(row)) {
                  if (row.length < 4) return null;
+                 type = row[1] || 'PG';
                  text = row[3]; img = row[4]; oa = row[5]; ob = row[6]; oc = row[7]; od = row[8]; key = row[9]; points = row[10];
              } else return null;
 
              if (!text) return null;
 
              const rawKey = key ? String(key).toUpperCase().trim() : 'A';
-             let cIndex = rawKey.charCodeAt(0) - 65;
-             if (cIndex < 0 || cIndex > 3) cIndex = 0; 
+             let cIndex = 0;
+             let cIndices: number[] = [];
+
+             if (type === 'PG_KOMPLEKS' || type === 'PG_BS') {
+                 const parts = rawKey.split(/[;,]/);
+                 cIndices = parts.map(p => p.trim().charCodeAt(0) - 65).filter(idx => idx >= 0 && idx < 10);
+                 if (cIndices.length > 0) cIndex = cIndices[0];
+             } else {
+                 cIndex = rawKey.charCodeAt(0) - 65;
+                 if (cIndex < 0 || cIndex > 3) cIndex = 0;
+             }
 
              return {
                   id: `imp-${idx}-${Date.now()}`,
-                  type: 'PG',
+                  type: type as QuestionType,
                   text: text || 'Soal',
                   imgUrl: img && String(img).startsWith('http') ? img : undefined,
-                  options: [oa || '', ob || '', oc || '', od || ''],
+                  options: type === 'URAIAN' ? [] : [oa || '', ob || '', oc || '', od || ''].filter(o => o !== ''),
                   correctIndex: cIndex,
+                  correctIndices: cIndices,
                   points: parseInt(points || '10')
              };
           }).filter(Boolean) as Question[];
@@ -1064,6 +1355,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     <div className="flex h-screen bg-gray-100 font-sans overflow-hidden print:h-auto print:overflow-visible">
       <input type="file" ref={studentFileRef} className="hidden" accept=".csv" onChange={onStudentFileChange} />
       <input type="file" ref={questionFileRef} className="hidden" accept=".csv" onChange={onQuestionFileChange} />
+      <input type="file" ref={zipFileRef} className="hidden" accept=".zip" onChange={onZipFileChange} />
 
       {/* RESPONSIVE SIDEBAR: w-16 on Mobile (Icon only), w-64 on Desktop */}
       <aside className="w-16 md:w-64 flex-shrink-0 text-white flex flex-col shadow-xl z-20 transition-all duration-300 print:hidden" style={{ backgroundColor: themeColor }}>
@@ -1194,8 +1486,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           <div className="flex flex-wrap gap-2 mb-6 bg-gray-50 p-4 rounded-lg border">
                                <button onClick={() => {setTargetExamForAdd(viewingQuestionsExam); setIsAddQuestionModalOpen(true);}} className="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-green-700 transition"><Plus size={16} className="mr-2"/> Input Manual</button>
                                <div className="h-8 w-px bg-gray-300 mx-2"></div>
-                               <button onClick={downloadQuestionTemplate} className="bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-gray-700 transition"><FileText size={16} className="mr-2"/> Download Template</button>
+                               <button onClick={() => setIsWordGuideOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-indigo-700 transition"><FileText size={16} className="mr-2"/> Panduan Word</button>
+                               <button onClick={downloadWordTemplate} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-blue-700 transition"><FileText size={16} className="mr-2"/> Template Word</button>
+                               <button onClick={downloadQuestionTemplate} className="bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-gray-700 transition"><FileText size={16} className="mr-2"/> Template CSV</button>
                                <button onClick={() => triggerImportQuestions(viewingQuestionsExam.id)} className="bg-orange-500 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-orange-600 transition"><Upload size={16} className="mr-2"/> Import CSV</button>
+                               <button onClick={() => triggerImportZip(viewingQuestionsExam.id)} className="bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-blue-800 transition"><Upload size={16} className="mr-2"/> Import Word (ZIP)</button>
                                <button onClick={() => handleExportQuestions(viewingQuestionsExam)} className="bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-blue-600 transition"><Download size={16} className="mr-2"/> Export CSV</button>
                           </div>
                           <div className="space-y-3">
@@ -1206,14 +1501,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                               <span className="font-bold bg-gray-200 w-8 h-8 flex items-center justify-center rounded-full text-sm">{i+1}</span>
                                               <span className="text-xs font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded">{q.type}</span>
                                           </div>
-                                          <p className="text-gray-800 mt-2 text-sm">{q.text}</p>
+                                          <div className="text-gray-800 mt-2 text-sm q-content" dangerouslySetInnerHTML={{ __html: q.text }}></div>
+                                          
+                                          {q.options && q.options.length > 0 && (
+                                              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                  {q.options.map((opt, idx) => (
+                                                      <div key={idx} className={`text-xs p-2 rounded border flex items-start gap-2 ${q.correctIndex === idx || (q.correctIndices && q.correctIndices.includes(idx)) ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-600'}`}>
+                                                          <span className="font-bold">{String.fromCharCode(65+idx)}.</span>
+                                                          <div dangerouslySetInnerHTML={{ __html: opt }}></div>
+                                                      </div>
+                                                  ))}
+                                              </div>
+                                          )}
                                       </div>
                                   </div>
                               ))}
                           </div>
                       </div>
                   ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <>
+                          <div className="flex flex-wrap gap-2 mb-6 bg-white p-4 rounded-xl border shadow-sm">
+                               <button onClick={() => setIsWordGuideOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-indigo-700 transition"><FileText size={16} className="mr-2"/> Panduan Word</button>
+                               <button onClick={downloadWordTemplate} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-blue-700 transition"><FileText size={16} className="mr-2"/> Template Word</button>
+                               <button onClick={downloadQuestionTemplate} className="bg-gray-600 text-white px-4 py-2 rounded text-sm font-bold flex items-center hover:bg-gray-700 transition"><FileText size={16} className="mr-2"/> Template CSV</button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {exams.map(ex => (
                               <div key={ex.id} className="bg-white p-5 rounded-xl border hover:shadow-lg transition cursor-pointer group" onClick={() => setViewingQuestionsExam(ex)}>
                                   <div className="flex justify-between items-start mb-4">
@@ -1225,6 +1537,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                               </div>
                           ))}
                       </div>
+                  </>
                   )}
               </div>
           )}
@@ -1588,6 +1901,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       </main>
 
       {/* EDIT MODAL FOR MAPPING / SCHEDULE */}
+      {/* MODAL PANDUAN WORD */}
+      {isWordGuideOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                  <div className="p-6 border-b flex justify-between items-center bg-indigo-50">
+                      <div className="flex items-center">
+                          <FileText className="text-indigo-600 mr-3" size={24}/>
+                          <h3 className="text-xl font-bold text-indigo-900">Panduan Template Microsoft Word</h3>
+                      </div>
+                      <button onClick={() => setIsWordGuideOpen(false)} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-100 rounded-full"><X size={24}/></button>
+                  </div>
+                  <div className="p-8 overflow-y-auto space-y-6">
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800 leading-relaxed">
+                          <p className="font-bold mb-2">Kenapa Menggunakan Template Word?</p>
+                          Template Ms.Word merupakan kombinasi strategi import Ms. Word + kapabilitas software Microsoft Word untuk mengkonversi dokumen ke format HTML. Dengan mode import ini, Anda dapat membuat soal dengan lebih bebas menggunakan Ms. Word (Formula/Equation, tabel, gambar, basic formatting seperti tebal, miring, dsb).
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-4">
+                              <h4 className="font-bold text-gray-800 border-b pb-2">Langkah-langkah:</h4>
+                              <ol className="list-decimal list-inside space-y-3 text-sm text-gray-700">
+                                  <li>
+                                      Unduh template resmi: 
+                                      <button onClick={downloadWordTemplate} className="ml-2 text-indigo-600 font-bold hover:underline flex-inline items-center">
+                                          <Download size={14} className="inline mr-1"/> Download Template Word
+                                      </button>
+                                  </li>
+                                  <li>Buat file soal menggunakan Microsoft Word sesuai format contoh di atas.</li>
+                                  <li>Simpan soal dalam bentuk <span className="font-bold">DOCX</span> terlebih dahulu (sebagai backup).</li>
+                                  <li>Lakukan konversi ke HTML: <span className="font-bold">Save As {"->"} Web Page Filtered</span>.</li>
+                                  <li>Mohon simpan dengan nama file <span className="font-bold">tanpa spasi</span>.</li>
+                                  <li>Proses ini akan menghasilkan file <span className="font-bold">.htm</span> dan folder (bila terdapat gambar/persamaan).</li>
+                                  <li>Pilih file HTML dan foldernya {"->"} Klik kanan {"->"} <span className="font-bold">Compress to ZIP</span>.</li>
+                                  <li>Unggah file ZIP yang dihasilkan menggunakan tombol <span className="font-bold">Import Word (ZIP)</span>.</li>
+                              </ol>
+                          </div>
+                          <div className="bg-gray-100 p-4 rounded-lg border flex items-center justify-center">
+                              <img src="https://lh3.googleusercontent.com/d/1X_m-f_8_h-v_8_h-v_8_h-v_8_h-v_8" alt="Contoh Format" className="max-w-full rounded shadow-sm" onError={(e) => { (e.target as any).src = 'https://picsum.photos/seed/word-format/400/600'; }} />
+                          </div>
+                      </div>
+
+                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 space-y-2">
+                          <h4 className="font-bold text-yellow-800 text-sm">Format Penulisan:</h4>
+                          <ul className="list-disc list-inside text-xs text-yellow-700 space-y-1">
+                              <li><span className="font-bold">PG:</span> Gunakan <span className="font-mono">#Kunci: A</span> di akhir soal.</li>
+                              <li><span className="font-bold">Essay:</span> Gunakan <span className="font-mono">#Skor: 30</span> di akhir soal.</li>
+                              <li><span className="font-bold">PG Kompleks (MA):</span> Gunakan <span className="font-mono">#Jenis: MA</span>. Opsi benar diawali <span className="font-mono">1^</span> (misal: <span className="font-mono">a. 1^Opsi Benar</span>).</li>
+                              <li><span className="font-bold">Benar/Salah (MTF):</span> Gunakan <span className="font-mono">#Jenis: MTF</span>. Opsi diawali skor (misal: <span className="font-mono">a. 4^Pernyataan Benar</span> atau <span className="font-mono">b. -4^Pernyataan Salah</span>).</li>
+                          </ul>
+                      </div>
+                  </div>
+                  <div className="p-6 border-t bg-gray-50 flex justify-end">
+                      <button onClick={() => setIsWordGuideOpen(false)} className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">Saya Mengerti</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {isEditModalOpen && (
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-md print:hidden">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-0 animate-in zoom-in-95 max-h-[90vh] overflow-hidden flex flex-col">
@@ -1765,16 +2136,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 h-[90vh] overflow-y-auto animate-in zoom-in-95">
                   <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">Tambah Soal Manual</h3><button onClick={() => setIsAddQuestionModalOpen(false)}><X/></button></div>
                   <div className="space-y-4">
-                      <select className="border rounded p-2 w-full" value={nqType} onChange={e => setNqType(e.target.value as QuestionType)}><option value="PG">Pilihan Ganda</option></select>
+                      <select className="border rounded p-2 w-full" value={nqType} onChange={e => {
+                          const type = e.target.value as QuestionType;
+                          setNqType(type);
+                          if (type === 'URAIAN') {
+                              setNqOptions([]);
+                          } else if (nqOptions.length === 0) {
+                              setNqOptions(['', '', '', '']);
+                          }
+                      }}>
+                          <option value="PG">Pilihan Ganda (Single)</option>
+                          <option value="PG_KOMPLEKS">Pilihan Ganda Kompleks (MCMA)</option>
+                          <option value="PG_BS">Pilihan Ganda Kompleks (Benar/Salah)</option>
+                          <option value="URAIAN">Essay / Uraian</option>
+                      </select>
                       <textarea className="border rounded p-2 w-full h-24" placeholder="Teks Soal..." value={nqText} onChange={e => setNqText(e.target.value)}></textarea>
-                      <div className="grid grid-cols-1 gap-2">
-                          {nqOptions.map((opt, i) => (
-                              <div key={i} className="flex items-center gap-2">
-                                  <span className="font-bold w-6">{String.fromCharCode(65+i)}.</span>
-                                  <input className="border rounded p-2 flex-1" value={opt} onChange={e => {const n = [...nqOptions]; n[i] = e.target.value; setNqOptions(n);}} placeholder={`Opsi ${String.fromCharCode(65+i)}`}/>
-                                  <input type="radio" name="correct" checked={nqCorrectIndex === i} onChange={() => setNqCorrectIndex(i)}/>
+                      
+                      {nqType !== 'URAIAN' && (
+                          <div className="grid grid-cols-1 gap-2">
+                              <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-bold">Opsi Jawaban & Kunci:</span>
+                                  <button onClick={() => setNqOptions([...nqOptions, ''])} className="text-blue-600 text-xs font-bold">+ Tambah Opsi</button>
                               </div>
-                          ))}
+                              {nqOptions.map((opt, i) => (
+                                  <div key={i} className="flex items-center gap-2">
+                                      <span className="font-bold w-6">{String.fromCharCode(65+i)}.</span>
+                                      <input className="border rounded p-2 flex-1" value={opt} onChange={e => {const n = [...nqOptions]; n[i] = e.target.value; setNqOptions(n);}} placeholder={`Opsi ${String.fromCharCode(65+i)}`}/>
+                                      
+                                      {nqType === 'PG' && (
+                                          <input type="radio" name="correct" checked={nqCorrectIndex === i} onChange={() => setNqCorrectIndex(i)}/>
+                                      )}
+                                      
+                                      {nqType === 'PG_KOMPLEKS' && (
+                                          <input type="checkbox" checked={nqCorrectIndices.includes(i)} onChange={() => {
+                                              if (nqCorrectIndices.includes(i)) {
+                                                  setNqCorrectIndices(nqCorrectIndices.filter(idx => idx !== i));
+                                              } else {
+                                                  setNqCorrectIndices([...nqCorrectIndices, i]);
+                                              }
+                                          }}/>
+                                      )}
+
+                                      {nqType === 'PG_BS' && (
+                                          <div className="flex gap-1">
+                                              <button 
+                                                  onClick={() => {
+                                                      if (!nqCorrectIndices.includes(i)) setNqCorrectIndices([...nqCorrectIndices, i]);
+                                                  }}
+                                                  className={`px-2 py-1 text-[10px] rounded font-bold ${nqCorrectIndices.includes(i) ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'}`}
+                                              >
+                                                  B
+                                              </button>
+                                              <button 
+                                                  onClick={() => {
+                                                      setNqCorrectIndices(nqCorrectIndices.filter(idx => idx !== i));
+                                                  }}
+                                                  className={`px-2 py-1 text-[10px] rounded font-bold ${!nqCorrectIndices.includes(i) ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}
+                                              >
+                                                  S
+                                              </button>
+                                          </div>
+                                      )}
+
+                                      <button onClick={() => setNqOptions(nqOptions.filter((_, idx) => idx !== i))} className="text-red-500"><X size={16}/></button>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                      
+                      <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                              <label className="block text-xs font-bold text-gray-500 mb-1">Bobot Nilai</label>
+                              <input type="number" className="border rounded p-2 w-full" value={nqPoints} onChange={e => setNqPoints(parseInt(e.target.value) || 0)}/>
+                          </div>
                       </div>
                       <button onClick={handleSaveQuestion} className="bg-green-600 text-white w-full py-3 rounded font-bold">Simpan Soal</button>
                   </div>
