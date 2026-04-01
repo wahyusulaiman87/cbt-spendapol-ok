@@ -211,7 +211,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setEditToken(exam.token);
       setEditDuration(exam.durationMinutes);
       setEditDate(exam.examDate || new Date().toISOString().split('T')[0]);
-      setEditSession(exam.session || 'Sesi 1');
+      setEditSession(exam.session || '08:00 - 10:00');
       setEditSchoolAccess(exam.schoolAccess || []); 
       setMappingSearch('');
       setIsEditModalOpen(true);
@@ -247,7 +247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setIsEditModalOpen(false);
       setEditingExam(null);
       loadData();
-      alert("Mapping Jadwal & Akses Kelas berhasil diperbarui!");
+      alert("Manajemen Ujian berhasil diperbarui!");
   };
 
   // --- QUESTION BANK & IMPORT/EXPORT ---
@@ -512,10 +512,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   if (!optionText.trim() && oMatch[2]) optionText = oMatch[2]; // Fallback to text if HTML replace failed
                   
                   // Check for score in option (e.g., "1^Semarang" or "4^Pernyataan Benar")
-                  const scoreMatch = optionText.match(/^(-?\d+)\^(.*)/);
+                  // We check text content to detect the score prefix, then strip it from the HTML
+                  const textContent = optionText.replace(/<[^>]+>/g, '').trim();
+                  const scoreMatch = textContent.match(/^(-?\d+)\^(.*)/);
+                  
                   if (scoreMatch) {
                       const score = parseInt(scoreMatch[1]);
-                      optionText = scoreMatch[2];
+                      // Strip the score prefix (e.g., "4^") from the HTML content
+                      // We handle potential tags between the digit and the caret
+                      optionText = optionText.replace(/(-?\d+)(?:\s*<[^>]+>)*\s*\^/, '');
+                      
                       if (score > 0) {
                           if (!currentQuestion.correctIndices) currentQuestion.correctIndices = [];
                           currentQuestion.correctIndices.push(currentQuestion.options!.length);
@@ -1419,7 +1425,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               <NavItem id="HASIL_UJIAN" label="Hasil Ujian" icon={ClipboardList} />
               <div className="my-2 border-t border-white/10"></div>
               <NavItem id="BANK_SOAL" label="Bank Soal" icon={Database} />
-              <NavItem id="MAPPING" label="Mapping Kelas" icon={Map} />
+              <NavItem id="MAPPING" label="Manajemen Ujian" icon={Map} />
               <NavItem id="PESERTA" label="Data Peserta" icon={RotateCcw} />
               <NavItem id="CETAK_KARTU" label="Cetak Kartu" icon={Printer} />
               <div className="my-2 border-t border-white/10"></div>
@@ -1608,13 +1614,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           {/* MAPPING KELAS */}
           {activeTab === 'MAPPING' && (
               <div className="bg-white rounded-xl shadow-sm border p-6 animate-in fade-in print:hidden">
-                  <h3 className="font-bold text-lg mb-4 flex items-center"><Map size={20} className="mr-2 text-blue-600"/> Mapping Jadwal & Akses Kelas</h3>
+                  <h3 className="font-bold text-lg mb-4 flex items-center"><Map size={20} className="mr-2 text-blue-600"/> Manajemen Ujian</h3>
                   <div className="overflow-x-auto">
                       <table className="w-full text-sm text-left">
                           <thead className="bg-gray-50 font-bold border-b">
                             <tr>
                                 <th className="p-3">Mapel</th>
-                                <th className="p-3">Tanggal & Sesi</th>
+                                <th className="p-3">Tanggal & Waktu Ujian</th>
                                 <th className="p-3">Durasi</th>
                                 <th className="p-3">Token</th>
                                 <th className="p-3">Akses Kelas</th>
@@ -1628,7 +1634,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                       <td className="p-3">
                                           <div className="flex flex-col">
                                               <span className="font-bold">{ex.examDate ? new Date(ex.examDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</span>
-                                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-1">{ex.session || 'Sesi 1'}</span>
+                                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-1">{ex.session || '08:00 - 10:00'}</span>
                                           </div>
                                       </td>
                                       <td className="p-3">{ex.durationMinutes} Menit</td>
@@ -1999,6 +2005,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                   <li>Pilih file HTML dan foldernya {"->"} Klik kanan {"->"} <span className="font-bold">Compress to ZIP</span>.</li>
                                   <li>Unggah file ZIP yang dihasilkan menggunakan tombol <span className="font-bold">Import Word (ZIP)</span>.</li>
                               </ol>
+
+                              <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 text-xs text-amber-800">
+                                  <p className="font-bold mb-1">Tips MCMA & MTF:</p>
+                                  <ul className="list-disc list-inside space-y-1">
+                                      <li>Gunakan <span className="font-bold">#Jenis: MA</span> untuk Pilihan Ganda Kompleks.</li>
+                                      <li>Gunakan <span className="font-bold">#Jenis: MTF</span> untuk Benar/Salah.</li>
+                                      <li>Tambahkan <span className="font-bold">1^</span> di depan pilihan yang benar untuk MA.</li>
+                                      <li>Tambahkan <span className="font-bold">4^</span> di depan pilihan yang benar untuk MTF.</li>
+                                      <li>Contoh: <span className="italic">a. 1^Pilihan Benar</span></li>
+                                  </ul>
+                              </div>
                           </div>
                           <div className="bg-gray-100 p-4 rounded-lg border flex items-center justify-center">
                               <img src="https://lh3.googleusercontent.com/d/1X_m-f_8_h-v_8_h-v_8_h-v_8_h-v_8" alt="Contoh Format" className="max-w-full rounded shadow-sm" onError={(e) => { (e.target as any).src = 'https://picsum.photos/seed/word-format/400/600'; }} />
@@ -2069,12 +2086,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                      </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Sesi</label>
-                                    <select className="border rounded-lg p-2 w-full text-sm font-medium bg-white" value={editSession} onChange={e => setEditSession(e.target.value)}>
-                                        <option value="Sesi 1">Sesi 1 (Pagi)</option>
-                                        <option value="Sesi 2">Sesi 2 (Siang)</option>
-                                        <option value="Sesi 3">Sesi 3 (Sore)</option>
-                                    </select>
+                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Waktu Ujian</label>
+                                     <input type="text" className="border rounded-lg p-2 w-full text-sm font-medium" placeholder="Contoh: 08:00 - 10:00" value={editSession} onChange={e => setEditSession(e.target.value)} />
                                 </div>
                            </div>
                       </div>
@@ -2126,7 +2139,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       <div>
                            <div className="flex justify-between items-center mb-2">
                                <label className="text-sm font-bold text-gray-700 flex items-center">
-                                   <Plus size={16} className="mr-2 text-green-600"/> Tambah Akses (Tersedia Sesi Ini)
+                                   <Plus size={16} className="mr-2 text-green-600"/> Tambah Akses (Tersedia Waktu Ini)
                                </label>
                                {availableSchools.length > 0 && (
                                    <button onClick={() => addAllAvailableSchools(availableSchools)} className="text-xs text-blue-600 font-bold hover:underline">Pilih Semua ({availableSchools.length})</button>
