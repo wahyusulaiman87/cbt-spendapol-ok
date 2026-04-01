@@ -16,6 +16,35 @@ const DEFAULT_SETTINGS: AppSettings = {
   }
 };
 
+// --- UTILS ---
+const cleanHtml = (html: string) => {
+    if (!html) return '';
+    // Remove all style, class, lang attributes
+    let cleaned = html.replace(/\s+(style|class|lang|size|face|color|font)="[^"]*"/gi, '');
+    // Remove Word-specific tags and comments
+    cleaned = cleaned.replace(/<xml>[\s\S]*?<\/xml>|<!--[\s\S]*?-->|<style>[\s\S]*?<\/style>/gi, '');
+    cleaned = cleaned.replace(/<o:[^>]*>|<\/o:[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<v:[^>]*>|<\/v:[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<w:[^>]*>|<\/w:[^>]*>/gi, '');
+    // Strip all tags except img, b, i, u, sup, sub, br
+    cleaned = cleaned.replace(/<(?!img|b|i|u|sup|sub|br|\/img|\/b|\/i|\/u|\/sup|\/sub|\/br)[^>]+>/gi, '');
+    // Remove &nbsp; and multiple spaces
+    cleaned = cleaned.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned;
+};
+
+const stripScoreMarker = (html: string) => {
+    if (!html) return '';
+    const caretIdx = html.indexOf('^');
+    if (caretIdx !== -1) {
+        const before = html.substring(0, caretIdx).replace(/<[^>]+>/g, '').trim();
+        if (/^-?\d+$/.test(before)) {
+            return html.substring(caretIdx + 1);
+        }
+    }
+    return html;
+};
+
 export const db = {
   getSettings: async (): Promise<AppSettings> => {
     // Return hardcoded settings as the new schema doesn't include app_settings
@@ -143,18 +172,24 @@ export const db = {
                 if (cIndex < 0 || cIndex > 7) cIndex = 0;
             }
             
+            // Helper to clean option text from score markers
+            const cleanOption = (opt: string) => {
+                if (!opt) return '';
+                return cleanHtml(stripScoreMarker(opt));
+            };
+
             return {
                 id: q.id,
                 subjectId: q.subject_id,
                 nomor: q["Nomor"],
                 type: type,
-                text: q["Soal"] || '',
+                text: cleanHtml(stripScoreMarker(q["Soal"] || '')),
                 imgUrl: q["Url Gambar"] || undefined,
                 options: [
-                    q["Opsi A"] || '', 
-                    q["Opsi B"] || '', 
-                    q["Opsi C"] || '', 
-                    q["Opsi D"] || ''
+                    cleanOption(q["Opsi A"] || ''), 
+                    cleanOption(q["Opsi B"] || ''), 
+                    cleanOption(q["Opsi C"] || ''), 
+                    cleanOption(q["Opsi D"] || '')
                 ].filter(o => o !== '' || type === 'PG'),
                 correctIndex: cIndex,
                 correctIndices: cIndices,

@@ -64,6 +64,35 @@ const escapeCSV = (field: any): string => {
     return stringField;
 };
 
+// --- UTILS ---
+const cleanHtml = (html: string) => {
+    if (!html) return '';
+    // Remove all style, class, lang attributes
+    let cleaned = html.replace(/\s+(style|class|lang|size|face|color|font)="[^"]*"/gi, '');
+    // Remove Word-specific tags and comments
+    cleaned = cleaned.replace(/<xml>[\s\S]*?<\/xml>|<!--[\s\S]*?-->|<style>[\s\S]*?<\/style>/gi, '');
+    cleaned = cleaned.replace(/<o:[^>]*>|<\/o:[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<v:[^>]*>|<\/v:[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<w:[^>]*>|<\/w:[^>]*>/gi, '');
+    // Strip all tags except img, b, i, u, sup, sub, br
+    cleaned = cleaned.replace(/<(?!img|b|i|u|sup|sub|br|\/img|\/b|\/i|\/u|\/sup|\/sub|\/br)[^>]+>/gi, '');
+    // Remove &nbsp; and multiple spaces
+    cleaned = cleaned.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned;
+};
+
+const stripScoreMarker = (html: string) => {
+    if (!html) return '';
+    const caretIdx = html.indexOf('^');
+    if (caretIdx !== -1) {
+        const before = html.substring(0, caretIdx).replace(/<[^>]+>/g, '').trim();
+        if (/^-?\d+$/.test(before)) {
+            return html.substring(caretIdx + 1);
+        }
+    }
+    return html;
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, appName, onSettingsChange, themeColor, settings }) => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -266,10 +295,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       const newQuestion: Question = {
           id: editingQuestion ? editingQuestion.id : `manual-${Date.now()}`,
           type: nqType,
-          text: nqText,
+          text: cleanHtml(nqText),
           imgUrl: nqImg || undefined,
           points: Number(nqPoints) || 0,
-          options: nqType === 'URAIAN' ? [] : nqOptions.filter(o => o.trim() !== ''),
+          options: nqType === 'URAIAN' ? [] : nqOptions.map(opt => cleanHtml(opt)), // Don't filter to keep indices consistent
           correctIndex: nqCorrectIndex,
           correctIndices: nqCorrectIndices,
       };
@@ -420,16 +449,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     <w:p><w:r><w:t>#Kunci: A</w:t></w:r></w:p>
     <w:p><w:r><w:t></w:t></w:r></w:p>
     <w:p><w:r><w:t>2. Manakah yang merupakan buah-buahan? (Pilihan Ganda Kompleks)</w:t></w:r></w:p>
-    <w:p><w:r><w:t>#Jenis: MA</w:t></w:r></w:p>
-    <w:p><w:r><w:t>a. 1^Apel</w:t></w:r></w:p>
+    <w:p><w:r><w:t>a. Apel</w:t></w:r></w:p>
     <w:p><w:r><w:t>b. Bayam</w:t></w:r></w:p>
-    <w:p><w:r><w:t>c. 1^Jeruk</w:t></w:r></w:p>
+    <w:p><w:r><w:t>c. Jeruk</w:t></w:r></w:p>
     <w:p><w:r><w:t>d. Wortel</w:t></w:r></w:p>
+    <w:p><w:r><w:t>#Kunci: A,C</w:t></w:r></w:p>
     <w:p><w:r><w:t></w:t></w:r></w:p>
     <w:p><w:r><w:t>3. Matahari terbit dari arah timur. (Benar/Salah)</w:t></w:r></w:p>
-    <w:p><w:r><w:t>#Jenis: MTF</w:t></w:r></w:p>
-    <w:p><w:r><w:t>a. 4^Benar</w:t></w:r></w:p>
-    <w:p><w:r><w:t>b. Salah</w:t></w:r></w:p>
+    <w:p><w:r><w:t>a. Pernyataan 1</w:t></w:r></w:p>
+    <w:p><w:r><w:t>b. Pernyataan 2</w:t></w:r></w:p>
+    <w:p><w:r><w:t>c. Pernyataan 3</w:t></w:r></w:p>
+    <w:p><w:r><w:t>#Kunci: B,S,S</w:t></w:r></w:p>
+    <w:p><w:r><w:t>(B=Benar, S=Salah)</w:t></w:r></w:p>
     <w:p><w:r><w:t></w:t></w:r></w:p>
     <w:p><w:r><w:t>4. Jelaskan secara singkat proses fotosintesis pada tumbuhan!</w:t></w:r></w:p>
     <w:p><w:r><w:t>#Skor: 25</w:t></w:r></w:p>
@@ -514,7 +545,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
           for (const p of paragraphs) {
               const text = p.textContent?.trim() || '';
-              const html = p.innerHTML;
+              const html = cleanHtml(p.innerHTML);
 
               // Skip empty paragraphs unless they contain images
               if (!text && !p.querySelector('img')) continue;
@@ -559,7 +590,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           const beforeCaret = optionText.substring(0, caretIndex);
                           const beforeCaretText = beforeCaret.replace(/<[^>]+>/g, '').trim();
                           if (/^-?\d+$/.test(beforeCaretText)) {
-                              optionText = optionText.substring(caretIndex + 1);
+                              optionText = optionText.substring(caretIndex + 1).trim();
                           }
                       }
                       
@@ -581,12 +612,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               }
 
               // Metadata patterns
-              if (text.startsWith('#Kunci:')) {
-                  const key = text.replace('#Kunci:', '').trim().toUpperCase();
-                  const idx = key.charCodeAt(0) - 65; // A=0, B=1...
-                  if (idx >= 0 && idx < 10) {
-                      currentQuestion.correctIndices = [idx];
-                      currentQuestion.correctIndex = idx;
+              if (text.toUpperCase().startsWith('#KUNCI:')) {
+                  const keyContent = text.substring(text.indexOf(':') + 1).trim().toUpperCase();
+                  
+                  if (keyContent.includes(',') || keyContent.includes(';')) {
+                      // Multi-answer format: A,B,D or B,S,S
+                      const parts = keyContent.split(/[;,]/).map(p => p.trim());
+                      
+                      if (parts.every(p => p === 'B' || p === 'S')) {
+                          // MTF format: B,S,S
+                          currentQuestion.type = 'PG_BS';
+                          currentQuestion.correctIndices = parts
+                              .map((p, idx) => p === 'B' ? idx : -1)
+                              .filter(idx => idx !== -1);
+                      } else {
+                          // MCMA format: A,B,D
+                          currentQuestion.type = 'PG_KOMPLEKS';
+                          currentQuestion.correctIndices = parts
+                              .map(p => p.charCodeAt(0) - 65)
+                              .filter(idx => idx >= 0 && idx < 10);
+                      }
+                  } else {
+                      // Single answer format: A
+                      const idx = keyContent.charCodeAt(0) - 65;
+                      if (idx >= 0 && idx < 10) {
+                          currentQuestion.correctIndices = [idx];
+                          currentQuestion.correctIndex = idx;
+                      }
                   }
                   continue;
               }
@@ -618,9 +670,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               newQuestions.push(currentQuestion as Question);
           }
 
-          if (newQuestions.length > 0) {
-              await db.addQuestions(importTargetExamId, newQuestions);
-              alert(`Berhasil mengimpor ${newQuestions.length} soal dari Word.`);
+          // Final cleanup for all questions
+          const cleanedQuestions = newQuestions.map(q => ({
+              ...q,
+              text: cleanHtml(stripScoreMarker(q.text)),
+              options: q.options?.map(opt => cleanHtml(stripScoreMarker(opt))) || []
+          }));
+
+          if (cleanedQuestions.length > 0) {
+              await db.addQuestions(importTargetExamId, cleanedQuestions);
+              alert(`Berhasil mengimpor ${cleanedQuestions.length} soal dari Word.`);
               loadData();
           } else {
               alert('Tidak ada soal yang ditemukan dalam format yang benar.');
