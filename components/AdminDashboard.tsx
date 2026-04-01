@@ -90,6 +90,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [editDuration, setEditDuration] = useState(0);
   const [editDate, setEditDate] = useState('');
   const [editSession, setEditSession] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
   const [editSchoolAccess, setEditSchoolAccess] = useState<string[]>([]);
   const [mappingSearch, setMappingSearch] = useState(''); 
   
@@ -211,7 +212,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setEditToken(exam.token);
       setEditDuration(exam.durationMinutes);
       setEditDate(exam.examDate || new Date().toISOString().split('T')[0]);
-      setEditSession(exam.session || '08:00 - 10:00');
+      setEditSession(exam.session || '08:00');
+      setEditEndTime(exam.endTime || '10:00');
       setEditSchoolAccess(exam.schoolAccess || []); 
       setMappingSearch('');
       setIsEditModalOpen(true);
@@ -241,6 +243,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           editToken.toUpperCase(), 
           editDuration,
           editDate,
+          editEndTime,
           editSession,
           editSchoolAccess
       );
@@ -283,7 +286,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           setNqCorrectIndex(0);
           setNqCorrectIndices([]);
           setNqPoints(10);
-          loadData();
+          await loadData();
       } catch (error) {
           console.error("Error saving question:", error);
           alert("Gagal menyimpan soal.");
@@ -539,17 +542,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   // Check for score in option (e.g., "1^Semarang" or "4^Pernyataan Benar")
                   // We check text content to detect the score prefix, then strip it from the HTML
                   const textContent = optionText.replace(/<[^>]+>/g, '').trim();
-                  const scoreMatch = textContent.match(/^(-?\d+)\^(.*)/);
+                  const scoreMatch = textContent.match(/^(-?\d+)\s*\^(.*)/);
                   
                   if (scoreMatch) {
                       const score = parseInt(scoreMatch[1]);
-                      // Strip the score prefix (e.g., "4^") from the HTML content
-                      // We handle potential tags between the digit and the caret
-                      optionText = optionText.replace(/(-?\d+)(?:\s*<[^>]+>)*\s*\^/, '');
+                      
+                      // More robust stripping: find the first caret and check if what's before it is a number
+                      const caretIndex = optionText.indexOf('^');
+                      if (caretIndex !== -1) {
+                          const beforeCaret = optionText.substring(0, caretIndex);
+                          const beforeCaretText = beforeCaret.replace(/<[^>]+>/g, '').trim();
+                          if (/^-?\d+$/.test(beforeCaretText)) {
+                              optionText = optionText.substring(caretIndex + 1);
+                          }
+                      }
                       
                       if (score > 0) {
                           if (!currentQuestion.correctIndices) currentQuestion.correctIndices = [];
-                          currentQuestion.correctIndices.push(currentQuestion.options!.length);
+                          if (!currentQuestion.correctIndices.includes(currentQuestion.options!.length)) {
+                              currentQuestion.correctIndices.push(currentQuestion.options!.length);
+                          }
                       }
                   }
                   
@@ -1671,7 +1683,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           <thead className="bg-gray-50 font-bold border-b">
                             <tr>
                                 <th className="p-3">Mapel</th>
-                                <th className="p-3">Tanggal & Waktu Ujian</th>
+                                <th className="p-3">Tanggal</th>
+                                <th className="p-3">Waktu</th>
                                 <th className="p-3">Durasi</th>
                                 <th className="p-3">Token</th>
                                 <th className="p-3">Akses Kelas</th>
@@ -1688,9 +1701,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                           </div>
                                       </td>
                                       <td className="p-3">
-                                          <div className="flex flex-col">
-                                              <span className="font-bold">{ex.examDate ? new Date(ex.examDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</span>
-                                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-1">Mulai Pukul: {ex.session || '07:00'}</span>
+                                          <span className="font-bold">{ex.examDate ? new Date(ex.examDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</span>
+                                      </td>
+                                      <td className="p-3">
+                                          <div className="flex flex-col gap-1">
+                                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit">Mulai: {ex.session || '07:00'}</span>
+                                              {ex.endTime && <span className="text-xs text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded w-fit">Selesai: {ex.endTime}</span>}
                                           </div>
                                       </td>
                                       <td className="p-3">{ex.durationMinutes} Menit</td>
@@ -2141,9 +2157,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                          </div>
                                      </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Waktu Mulai Ujian</label>
-                                     <input type="time" className="border rounded-lg p-2 w-full text-sm font-medium" value={editSession} onChange={e => setEditSession(e.target.value)} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Waktu Mulai</label>
+                                        <input type="time" className="border rounded-lg p-2 w-full text-sm font-medium" value={editSession} onChange={e => setEditSession(e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Waktu Berakhir</label>
+                                        <input type="time" className="border rounded-lg p-2 w-full text-sm font-medium" value={editEndTime} onChange={e => setEditEndTime(e.target.value)} />
+                                    </div>
                                 </div>
                            </div>
                       </div>

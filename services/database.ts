@@ -174,6 +174,7 @@ export const db = {
             isActive: sub.is_active !== false, // Default to true if null or undefined
             questions: mappedQuestions,
             examDate: sub.exam_date,
+            endTime: sub.end_time,
             session: sub.session,
             schoolAccess: schoolAccess
         });
@@ -183,11 +184,12 @@ export const db = {
   },
 
   // Updated to support Full Mapping
-  updateExamMapping: async (examId: string, token: string, durationMinutes: number, examDate: string, session: string, schoolAccess: string[]): Promise<void> => {
+  updateExamMapping: async (examId: string, token: string, durationMinutes: number, examDate: string, endTime: string, session: string, schoolAccess: string[]): Promise<void> => {
     await supabase.from('subjects').update({ 
       token: token,
       duration: durationMinutes,
       exam_date: examDate,
+      end_time: endTime,
       session: session,
       school_access: schoolAccess // Supabase handles array to JSONB auto conversion
     }).eq('id', examId);
@@ -208,7 +210,8 @@ export const db = {
         name: exam.title,
         duration: exam.durationMinutes,
         question_count: 0,
-        token: exam.token
+        token: exam.token,
+        is_active: true
     };
     await supabase.from('subjects').insert(payload);
   },

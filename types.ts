@@ -53,6 +53,7 @@ export interface Exam {
   
   // Mapping Fields
   examDate?: string; // Mapped from "exam_date"
+  endTime?: string;  // Mapped from "end_time"
   session?: string;  // Mapped from "session"
   schoolAccess?: string[]; // Mapped from "school_access"
 

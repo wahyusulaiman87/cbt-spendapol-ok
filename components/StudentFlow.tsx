@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Exam, AppSettings } from '../types';
 import { db } from '../services/database'; 
-import { UserCircle, RefreshCcw, Lock, CheckCircle, Play, Calendar } from 'lucide-react';
+import { UserCircle, RefreshCcw, Lock, CheckCircle, Play, Calendar, XCircle } from 'lucide-react';
 import { BackgroundShapes } from './BackgroundShapes';
 
 interface StudentFlowProps {
@@ -154,8 +154,10 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
                     
                     const isToday = exam.examDate === todayStr;
                     const isTimeReached = !exam.session || currentTimeStr >= exam.session;
-                    const canStart = isToday && isTimeReached;
+                    const isTimeOver = exam.endTime && currentTimeStr > exam.endTime;
+                    const canStart = isToday && isTimeReached && !isTimeOver;
                     const isWaiting = isToday && !isTimeReached;
+                    const isExpired = isToday && isTimeOver;
 
                     return (
                         <div 
@@ -180,7 +182,7 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
                                      </div>
                                      {exam.session && (
                                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                             Mulai Pukul: {exam.session}
+                                             Mulai: {exam.session} {exam.endTime ? ` s/d ${exam.endTime}` : ''}
                                          </span>
                                      )}
                                  </div>
@@ -188,6 +190,10 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
                                  {isDone ? (
                                      <div className="w-full py-3 bg-green-100 text-green-700 rounded-xl font-bold text-sm flex items-center justify-center shadow-inner">
                                          <CheckCircle size={18} className="mr-2"/> Selesai
+                                     </div>
+                                 ) : isExpired ? (
+                                     <div className="w-full py-3 bg-red-100 text-red-700 rounded-xl font-bold text-sm flex items-center justify-center shadow-inner border border-red-200">
+                                         <XCircle size={18} className="mr-2"/> Waktu Habis
                                      </div>
                                  ) : isWaiting ? (
                                      <div className="w-full py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm flex items-center justify-center shadow-inner border border-amber-200">
