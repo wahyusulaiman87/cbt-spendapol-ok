@@ -34,7 +34,7 @@ export const db = {
     if (cleanInput === 'superadmin' && password === 'admin') {
         return {
             id: 'superadmin-id',
-            name: 'Kepala Sekolah / Root',
+            name: 'Kepala Kelas / Root',
             username: 'superadmin',
             role: UserRole.SUPER_ADMIN,
             school: 'PUSAT',

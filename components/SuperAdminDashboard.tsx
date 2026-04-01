@@ -224,7 +224,7 @@ export const SuperAdminDashboard: React.FC<Props> = ({ user, onLogout, settings,
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-2xl">
                             
                             <div className="mb-8 border-b pb-6">
-                                <label className="block text-sm font-bold text-gray-700 mb-3">Logo Sekolah</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">Logo Kelas</label>
                                 <div className="flex items-start gap-6">
                                     <div className="flex-shrink-0 flex flex-col items-center">
                                         <div className={`flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 overflow-hidden shadow-sm ${getPreviewContainerClass()}`}>
@@ -420,7 +420,7 @@ export const SuperAdminDashboard: React.FC<Props> = ({ user, onLogout, settings,
                                         onClick={() => setNewUserRole(UserRole.ADMIN)}
                                         className={`py-2 rounded border font-bold text-sm ${newUserRole === UserRole.ADMIN ? 'bg-blue-50 border-blue-500 text-blue-600' : 'border-gray-200 text-gray-500'}`}
                                      >
-                                         Admin Sekolah
+                                         Admin Kelas
                                      </button>
                                      <button 
                                         type="button"

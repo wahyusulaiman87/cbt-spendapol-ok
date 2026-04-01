@@ -301,7 +301,7 @@ const App: React.FC = () => {
 
                   <div className="pt-16 pb-8 px-8 text-center">
                       <h3 className="text-2xl font-extrabold text-gray-800 mb-2">Maaf, Belum Ada Jadwal</h3>
-                      <p className="text-gray-500 mb-6 text-sm">Tidak ada ujian yang aktif untuk sekolah Anda hari ini. <br/>Berikut adalah jadwal ujian Anda yang terdaftar:</p>
+                      <p className="text-gray-500 mb-6 text-sm">Tidak ada ujian yang aktif untuk kelas Anda hari ini. <br/>Berikut adalah jadwal ujian Anda yang terdaftar:</p>
                       
                       {blockedSchedule.length > 0 ? (
                           <div className="border rounded-xl overflow-hidden bg-gray-50 text-left max-h-60 overflow-y-auto custom-scrollbar">
@@ -321,7 +321,7 @@ const App: React.FC = () => {
                           </div>
                       ) : (
                           <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-sm font-bold">
-                              Belum ada mata ujian yang dimapping untuk sekolah Anda. Hubungi Admin.
+                              Belum ada mata ujian yang dimapping untuk kelas Anda. Hubungi Admin.
                           </div>
                       )}
 

@@ -247,7 +247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setIsEditModalOpen(false);
       setEditingExam(null);
       loadData();
-      alert("Mapping Jadwal & Akses Sekolah berhasil diperbarui!");
+      alert("Mapping Jadwal & Akses Kelas berhasil diperbarui!");
   };
 
   // --- QUESTION BANK & IMPORT/EXPORT ---
@@ -328,7 +328,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   };
   
   const downloadStudentTemplate = () => {
-      const headers = "NISN,NAMA,SEKOLAH,PASSWORD";
+      const headers = "NISN,NAMA,KELAS,PASSWORD";
       const example = "1234567890,Ahmad Siswa,SD NEGERI 1,12345";
       const blob = new Blob([headers + "\n" + example], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'TEMPLATE_SISWA_DB.csv'; link.click();
@@ -745,7 +745,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
       if (filteredResults.length === 0) return alert("Tidak ada data untuk diexport");
 
-      const headers = ["Nama Siswa", "Sekolah", "Mata Pelajaran", "Nilai", "Waktu Submit"];
+      const headers = ["Nama Siswa", "Kelas", "Mata Pelajaran", "Nilai", "Waktu Submit"];
       const rows = filteredResults.map(r => {
           const student = users.find(u => u.id === r.studentId);
           return [
@@ -847,7 +847,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
   const { assigned: assignedSchools, available: availableSchools, busyCount } = isEditModalOpen ? getSchoolsAvailability() : { assigned: [], available: [], busyCount: 0 };
 
-  // --- AGGREGATION FOR "JUMLAH SEKOLAH" DASHBOARD VIEW ---
+  // --- AGGREGATION FOR "JUMLAH KELAS" DASHBOARD VIEW ---
   const getSchoolStats = (schoolName: string) => {
       const studentsInSchool = users.filter(u => u.school === schoolName);
       const notLogin = studentsInSchool.filter(u => !u.isLogin && u.status !== 'finished').length;
@@ -862,13 +862,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   };
 
   const handleDownloadSchoolStats = () => {
-      const headers = ["Nama Sekolah", "Total Siswa", "Belum Login", "Mengerjakan", "Selesai", "Mapel Hari Ini"];
+      const headers = ["Nama Kelas", "Total Siswa", "Belum Login", "Mengerjakan", "Selesai", "Mapel Hari Ini"];
       const rows = schools.map(s => {
           const stats = getSchoolStats(s);
           return [escapeCSV(s), stats.total, stats.notLogin, stats.working, stats.finished, escapeCSV(stats.todayExamTitle)].join(",");
       });
       const blob = new Blob([headers.join(",") + "\n" + rows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.setAttribute('download', `REKAP_SEKOLAH_HARI_INI.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.setAttribute('download', `REKAP_KELAS_HARI_INI.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
   // --- RENDER CONTENT BASED ON DASHBOARD VIEW ---
@@ -884,7 +884,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <h3 className="font-bold text-lg text-gray-800">Detail Status Siswa (Realtime)</h3>
                     </div>
                     <select className="border rounded p-2 text-sm min-w-[200px]" value={dashboardSchoolFilter} onChange={e => setDashboardSchoolFilter(e.target.value)}>
-                        <option value="ALL">Semua Sekolah</option>
+                        <option value="ALL">Semua Kelas</option>
                         {schools.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
@@ -923,11 +923,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 gap-4">
                     <div className="flex items-center gap-2">
                         <button onClick={() => setDashboardView('MAIN')} className="p-2 hover:bg-gray-100 rounded-full transition"><ArrowLeft size={20}/></button>
-                        <h3 className="font-bold text-lg text-gray-800">Rekap Mapping & Status Sekolah</h3>
+                        <h3 className="font-bold text-lg text-gray-800">Rekap Mapping & Status Kelas</h3>
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                          <select className="border rounded p-2 text-sm flex-1 md:min-w-[200px]" value={dashboardSchoolFilter} onChange={e => setDashboardSchoolFilter(e.target.value)}>
-                            <option value="ALL">Semua Sekolah</option>
+                            <option value="ALL">Semua Kelas</option>
                             {schools.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                         <button onClick={handleDownloadSchoolStats} className="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center hover:bg-green-700"><Download size={16} className="md:mr-2"/><span className="hidden md:inline">CSV</span></button>
@@ -938,7 +938,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 font-bold border-b text-gray-600 uppercase text-xs">
                             <tr>
-                                <th className="p-4">Nama Sekolah</th>
+                                <th className="p-4">Nama Kelas</th>
                                 <th className="p-4 text-center">Total Siswa</th>
                                 <th className="p-4 text-center text-red-600">Belum Login</th>
                                 <th className="p-4 text-center text-blue-600">Mengerjakan</th>
@@ -984,7 +984,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                          <h3 className="font-bold text-lg text-gray-800">Detail Status Penyelesaian</h3>
                     </div>
                     <select className="border rounded p-2 text-sm min-w-[200px]" value={dashboardSchoolFilter} onChange={e => setDashboardSchoolFilter(e.target.value)}>
-                        <option value="ALL">Semua Sekolah Termapping</option>
+                        <option value="ALL">Semua Kelas Termapping</option>
                         {schools.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
@@ -997,7 +997,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <div className="p-0 overflow-y-auto max-h-[500px]">
                             <table className="w-full text-xs text-left">
                                 <thead className="bg-gray-50 font-bold border-b text-gray-500">
-                                    <tr><th className="p-3">Nama</th><th className="p-3">Sekolah</th></tr>
+                                    <tr><th className="p-3">Nama</th><th className="p-3">Kelas</th></tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {finishedUsers.map(u => (
@@ -1019,7 +1019,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <div className="p-0 overflow-y-auto max-h-[500px]">
                             <table className="w-full text-xs text-left">
                                 <thead className="bg-gray-50 font-bold border-b text-gray-500">
-                                    <tr><th className="p-3">Nama</th><th className="p-3">Sekolah</th><th className="p-3">Status</th></tr>
+                                    <tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">Status</th></tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {unfinishedUsers.map(u => {
@@ -1139,14 +1139,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                     <p className="text-xs text-green-600 mt-4 font-bold flex items-center">Lihat Detail Status <ArrowLeft size={12} className="rotate-180 ml-1"/></p>
                 </div>
 
-                {/* Jumlah Sekolah */}
+                {/* Jumlah Kelas */}
                 <div 
                     onClick={() => setDashboardView('SCHOOLS_DETAIL')}
                     className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-lg hover:-translate-y-1 transition border-l-4 border-l-purple-500 cursor-pointer group"
                 >
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Jumlah Sekolah</p>
+                            <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Jumlah Kelas</p>
                             <h3 className="text-4xl font-bold text-gray-800 mt-2">{schools.length}</h3>
                         </div>
                         <div className="bg-purple-50 p-3 rounded-lg group-hover:scale-110 transition"><School className="text-purple-500" size={24}/></div>
@@ -1178,7 +1178,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <Activity className="mr-2 text-blue-600" size={24}/>
                         <div>
                             <h3 className="font-bold text-lg text-gray-800">Grafik Statistik Realtime</h3>
-                            <p className="text-xs text-gray-500">Pantau progres ujian berdasarkan sekolah dan jadwal.</p>
+                            <p className="text-xs text-gray-500">Pantau progres ujian berdasarkan kelas dan jadwal.</p>
                         </div>
                     </div>
                     
@@ -1351,7 +1351,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                         <thead className="bg-red-50 text-red-900 font-bold border-b border-red-100">
                             <tr>
                                 <th className="p-3 rounded-tl-lg">Nama Siswa</th>
-                                <th className="p-3">Sekolah</th>
+                                <th className="p-3">Kelas</th>
                                 <th className="p-3">Mapel</th>
                                 <th className="p-3 text-center">Jml Pelanggaran</th>
                                 <th className="p-3 rounded-tr-lg text-center">Aksi</th>
@@ -1468,7 +1468,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                     </th>
                                     <th className="p-3">Nama</th>
                                     <th className="p-3">NISN</th>
-                                    <th className="p-3">Sekolah</th>
+                                    <th className="p-3">Kelas</th>
                                     <th className="p-3">Status</th>
                                     <th className="p-3 text-center">Kontrol</th>
                                 </tr>
@@ -1605,10 +1605,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               </div>
           )}
 
-          {/* MAPPING SEKOLAH */}
+          {/* MAPPING KELAS */}
           {activeTab === 'MAPPING' && (
               <div className="bg-white rounded-xl shadow-sm border p-6 animate-in fade-in print:hidden">
-                  <h3 className="font-bold text-lg mb-4 flex items-center"><Map size={20} className="mr-2 text-blue-600"/> Mapping Jadwal & Akses Sekolah</h3>
+                  <h3 className="font-bold text-lg mb-4 flex items-center"><Map size={20} className="mr-2 text-blue-600"/> Mapping Jadwal & Akses Kelas</h3>
                   <div className="overflow-x-auto">
                       <table className="w-full text-sm text-left">
                           <thead className="bg-gray-50 font-bold border-b">
@@ -1617,7 +1617,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                 <th className="p-3">Tanggal & Sesi</th>
                                 <th className="p-3">Durasi</th>
                                 <th className="p-3">Token</th>
-                                <th className="p-3">Akses Sekolah</th>
+                                <th className="p-3">Akses Kelas</th>
                                 <th className="p-3">Aksi</th>
                             </tr>
                           </thead>
@@ -1636,7 +1636,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                       <td className="p-3">
                                           {ex.schoolAccess && ex.schoolAccess.length > 0 ? (
                                               <div className="flex flex-wrap gap-1">
-                                                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">{ex.schoolAccess.length} Sekolah</span>
+                                                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">{ex.schoolAccess.length} Kelas</span>
                                                   {ex.schoolAccess.slice(0, 2).map(s => <span key={s} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] truncate max-w-[100px]">{s}</span>)}
                                                   {ex.schoolAccess.length > 2 && <span className="text-[10px] text-gray-400 self-center">...</span>}
                                               </div>
@@ -1670,13 +1670,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             <input placeholder="Cari nama atau NISN..." className="border rounded pl-9 pr-3 py-2 text-sm w-full" value={monitoringSearch} onChange={e => setMonitoringSearch(e.target.value)} />
                        </div>
                        <select className="border rounded p-2 text-sm min-w-[200px]" value={selectedSchoolFilter} onChange={e => setSelectedSchoolFilter(e.target.value)}>
-                           <option value="ALL">Semua Sekolah</option>
+                           <option value="ALL">Semua Kelas</option>
                            {schools.map(s => <option key={s} value={s}>{s}</option>)}
                        </select>
                    </div>
                    <div className="overflow-x-auto border rounded bg-white">
                        <table className="w-full text-sm text-left">
-                           <thead className="bg-gray-50 font-bold border-b"><tr><th className="p-3">Nama</th><th className="p-3">NISN</th><th className="p-3">Sekolah</th><th className="p-3 text-center">Kontrol</th></tr></thead>
+                           <thead className="bg-gray-50 font-bold border-b"><tr><th className="p-3">Nama</th><th className="p-3">NISN</th><th className="p-3">Kelas</th><th className="p-3 text-center">Kontrol</th></tr></thead>
                            <tbody className="divide-y">
                                {getMonitoringUsers(selectedSchoolFilter).map(u => (
                                    <tr key={u.id} className="hover:bg-gray-50">
@@ -1706,14 +1706,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       <Filter size={18} className="text-gray-500"/>
                       <span className="text-sm font-bold text-gray-700">Filter Lembaga:</span>
                       <select className="border rounded p-2 text-sm min-w-[250px]" value={resultSchoolFilter} onChange={e => setResultSchoolFilter(e.target.value)}>
-                           <option value="ALL">Semua Lembaga/Sekolah</option>
+                           <option value="ALL">Semua Lembaga/Kelas</option>
                            {schools.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                   </div>
 
                   <div className="overflow-x-auto border rounded">
                       <table className="w-full text-sm text-left">
-                          <thead className="bg-gray-50 font-bold border-b"><tr><th className="p-3">Nama</th><th className="p-3">Sekolah</th><th className="p-3">Mapel</th><th className="p-3">Nilai</th><th className="p-3">Waktu Submit</th></tr></thead>
+                          <thead className="bg-gray-50 font-bold border-b"><tr><th className="p-3">Nama</th><th className="p-3">Kelas</th><th className="p-3">Mapel</th><th className="p-3">Nilai</th><th className="p-3">Waktu Submit</th></tr></thead>
                           <tbody className="divide-y">
                               {results
                                 .filter(r => {
@@ -1748,9 +1748,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       <h3 className="font-bold text-lg">Cetak Kartu Peserta</h3>
                       <div className="flex flex-wrap gap-4 items-center bg-gray-50 p-3 rounded-lg border">
                           <div>
-                              <label className="block text-xs font-bold text-gray-500 mb-1">Filter Sekolah</label>
+                              <label className="block text-xs font-bold text-gray-500 mb-1">Filter Kelas</label>
                               <select className="border rounded p-1.5 text-sm w-48" value={cardSchoolFilter} onChange={e => setCardSchoolFilter(e.target.value)}>
-                                  <option value="ALL">Semua Sekolah</option>
+                                  <option value="ALL">Semua Kelas</option>
                                   {schools.map(s => <option key={s} value={s}>{s}</option>)}
                               </select>
                           </div>
@@ -1817,7 +1817,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                                 <span className="font-mono font-bold bg-gray-100 px-1 border border-gray-200 rounded">: {u.password}</span>
                                             </div>
                                             <div className="flex items-start">
-                                                <span className="w-14 font-bold text-gray-500">SEKOLAH</span>
+                                                <span className="w-14 font-bold text-gray-500">KELAS</span>
                                                 <span className="flex-1 truncate leading-tight">: {u.school || '-'}</span>
                                             </div>
                                             <div className="flex items-center">
@@ -2101,7 +2101,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       <div className="mb-4">
                           <div className="flex justify-between items-center mb-2">
                                <label className="text-sm font-bold text-gray-700 flex items-center">
-                                   <CheckSquare size={16} className="mr-2 text-blue-600"/> Sekolah Terpilih (Akses Diberikan)
+                                   <CheckSquare size={16} className="mr-2 text-blue-600"/> Kelas Terpilih (Akses Diberikan)
                                </label>
                                {editSchoolAccess.length > 0 && (
                                    <button onClick={() => setEditSchoolAccess([])} className="text-xs text-red-500 font-bold hover:underline">Hapus Semua</button>
@@ -2109,7 +2109,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           </div>
                           <div className="bg-white border-2 border-blue-100 rounded-xl p-3 min-h-[80px] flex flex-wrap gap-2 content-start shadow-inner">
                                {editSchoolAccess.length === 0 && (
-                                   <p className="text-sm text-gray-400 italic w-full text-center py-4">Belum ada sekolah yang dipilih.</p>
+                                   <p className="text-sm text-gray-400 italic w-full text-center py-4">Belum ada kelas yang dipilih.</p>
                                )}
                                {editSchoolAccess.map(s => (
                                    <div key={s} className="group bg-blue-600 text-white pl-3 pr-1 py-1 rounded-full text-xs font-bold flex items-center shadow-sm animate-in zoom-in duration-200">
@@ -2138,7 +2138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
                                <input 
                                    className="w-full border rounded-lg py-2 pl-9 pr-3 text-xs bg-gray-50 focus:bg-white transition outline-none focus:ring-1 focus:ring-blue-400"
-                                   placeholder="Cari nama sekolah..."
+                                   placeholder="Cari nama kelas..."
                                    value={mappingSearch}
                                    onChange={e => setMappingSearch(e.target.value)}
                                />
@@ -2148,8 +2148,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                {availableSchools.length === 0 ? (
                                    <div className="p-6 text-center text-gray-400 text-xs">
                                        <Info size={24} className="mx-auto mb-2 opacity-50"/>
-                                       <p>Tidak ada sekolah tersedia untuk ditambahkan.</p>
-                                       {busyCount > 0 && <p className="mt-1 text-orange-400">({busyCount} sekolah sedang ujian mapel lain)</p>}
+                                       <p>Tidak ada kelas tersedia untuk ditambahkan.</p>
+                                       {busyCount > 0 && <p className="mt-1 text-orange-400">({busyCount} kelas sedang ujian mapel lain)</p>}
                                    </div>
                                ) : (
                                    availableSchools.map(s => (
@@ -2176,7 +2176,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                            {busyCount > 0 && (
                                <div className="mt-2 bg-orange-50 border border-orange-100 rounded-lg p-2 flex items-center gap-2 text-xs text-orange-700">
                                    <AlertTriangle size={14} className="flex-shrink-0"/>
-                                   <span><strong>{busyCount} Sekolah</strong> disembunyikan karena sudah ada jadwal ujian lain di sesi ini.</span>
+                                   <span><strong>{busyCount} Kelas</strong> disembunyikan karena sudah ada jadwal ujian lain di sesi ini.</span>
                                </div>
                            )}
                       </div>
