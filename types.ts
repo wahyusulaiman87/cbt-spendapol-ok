@@ -48,7 +48,7 @@ export interface Exam {
   durationMinutes: number; // Mapped from "duration"
   questionCount: number;   // Mapped from "question_count"
   token: string;
-  isActive: boolean; // Virtual (always true based on schema)
+  isActive: boolean; 
   questions: Question[]; // Populated via relation
   
   // Mapping Fields

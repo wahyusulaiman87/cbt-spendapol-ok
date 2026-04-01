@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Exam, AppSettings } from '../types';
 import { db } from '../services/database'; 
-import { UserCircle, RefreshCcw, Lock, CheckCircle, Play } from 'lucide-react';
+import { UserCircle, RefreshCcw, Lock, CheckCircle, Play, Calendar } from 'lucide-react';
 import { BackgroundShapes } from './BackgroundShapes';
 
 interface StudentFlowProps {
@@ -50,8 +50,10 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
 
   const loadExamsAndResults = async () => {
     // 1. Get Exams (Subjects)
-    const exams = await db.getExams('SMP'); // Argument mostly ignored in new DB logic but kept for type signature
-    setAvailableExams(exams);
+    const exams = await db.getExams('SMP'); 
+    // Filter by isActive and school access
+    const filteredExams = exams.filter(ex => ex.isActive);
+    setAvailableExams(filteredExams);
 
     // 2. Get Results for this user
     const allResults = await db.getAllResults();
@@ -144,28 +146,56 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
                 {availableExams.map((exam) => {
                     const isDone = completedExams.includes(exam.id);
+                    
+                    // Real-time start check
+                    const now = new Date();
+                    const todayStr = now.toISOString().split('T')[0];
+                    const currentTimeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                    
+                    const isToday = exam.examDate === todayStr;
+                    const isTimeReached = !exam.session || currentTimeStr >= exam.session;
+                    const canStart = isToday && isTimeReached;
+                    const isWaiting = isToday && !isTimeReached;
+
                     return (
                         <div 
                             key={exam.id}
-                            onClick={() => !isDone && handleSelectExam(exam)}
+                            onClick={() => !isDone && canStart && handleSelectExam(exam)}
                             className={`
                                 relative group rounded-3xl p-6 transition-all duration-300 transform flex flex-col items-center justify-between min-h-[200px] overflow-hidden
                                 ${isDone 
                                     ? 'bg-white/80 border-4 border-green-200 grayscale-[0.3]' 
-                                    : 'bg-white border-b-[10px] border-blue-200 hover:-translate-y-3 hover:shadow-2xl cursor-pointer hover:border-blue-400'
+                                    : !canStart
+                                        ? 'bg-gray-100 border-4 border-gray-200 cursor-not-allowed opacity-80'
+                                        : 'bg-white border-b-[10px] border-blue-200 hover:-translate-y-3 hover:shadow-2xl cursor-pointer hover:border-blue-400'
                                 }
                             `}
                         >
                              <div className="text-center w-full z-10 mt-4">
                                  <h3 className="text-xl font-extrabold text-gray-800 mb-1 leading-tight line-clamp-2">{exam.subject}</h3>
-                                 <div className="flex justify-center gap-2 text-xs font-bold text-gray-500 mb-6 bg-gray-50 p-2 rounded-lg inline-flex">
-                                     <span className="flex items-center"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>{exam.durationMinutes} Menit</span>
-                                     <span className="flex items-center"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1"></span>{exam.questions.length} Soal</span>
+                                 <div className="flex flex-col items-center gap-1 mb-6">
+                                     <div className="flex justify-center gap-2 text-xs font-bold text-gray-500 bg-gray-50 p-2 rounded-lg inline-flex">
+                                         <span className="flex items-center"><span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>{exam.durationMinutes} Menit</span>
+                                         <span className="flex items-center"><span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1"></span>{exam.questions.length} Soal</span>
+                                     </div>
+                                     {exam.session && (
+                                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                             Mulai Pukul: {exam.session}
+                                         </span>
+                                     )}
                                  </div>
 
                                  {isDone ? (
                                      <div className="w-full py-3 bg-green-100 text-green-700 rounded-xl font-bold text-sm flex items-center justify-center shadow-inner">
                                          <CheckCircle size={18} className="mr-2"/> Selesai
+                                     </div>
+                                 ) : isWaiting ? (
+                                     <div className="w-full py-3 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm flex items-center justify-center shadow-inner border border-amber-200">
+                                         <Lock size={18} className="mr-2"/> Belum Dimulai
+                                     </div>
+                                 ) : !isToday ? (
+                                     <div className="w-full py-3 bg-gray-200 text-gray-500 rounded-xl font-bold text-sm flex items-center justify-center shadow-inner">
+                                         <Calendar size={18} className="mr-2"/> Bukan Hari Ini
                                      </div>
                                  ) : (
                                      <button className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-blue-300 shadow-lg group-hover:bg-blue-700 transition flex items-center justify-center transform group-hover:scale-105 active:scale-95">

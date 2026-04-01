@@ -313,7 +313,7 @@ const App: React.FC = () => {
                                            <h4 className="font-bold text-gray-800 text-sm">{ex.title}</h4>
                                            <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded border">{ex.examDate || 'Belum diatur'}</span>
-                                                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded border border-blue-200 font-bold">{ex.session || 'Sesi 1'}</span>
+                                                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded border border-blue-200 font-bold">Mulai Pukul: {ex.session || '07:00'}</span>
                                            </div>
                                        </div>
                                    </div>

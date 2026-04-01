@@ -171,7 +171,7 @@ export const db = {
             durationMinutes: sub.duration,
             questionCount: sub.question_count,
             token: sub.token,
-            isActive: true,
+            isActive: sub.is_active !== false, // Default to true if null or undefined
             questions: mappedQuestions,
             examDate: sub.exam_date,
             session: sub.session,
@@ -191,6 +191,16 @@ export const db = {
       session: session,
       school_access: schoolAccess // Supabase handles array to JSONB auto conversion
     }).eq('id', examId);
+  },
+
+  updateExamStatus: async (examId: string, isActive: boolean): Promise<void> => {
+    await supabase.from('subjects').update({ 
+      is_active: isActive
+    }).eq('id', examId);
+  },
+
+  deleteExam: async (examId: string): Promise<void> => {
+    await supabase.from('subjects').delete().eq('id', examId);
   },
 
   createExam: async (exam: Exam): Promise<void> => {

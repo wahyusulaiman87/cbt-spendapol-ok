@@ -304,6 +304,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       }
   };
 
+  const handleToggleExamStatus = async (exam: Exam) => {
+      const newStatus = !exam.isActive;
+      try {
+          await db.updateExamStatus(exam.id, newStatus);
+          setExams(prev => prev.map(ex => ex.id === exam.id ? { ...ex, isActive: newStatus } : ex));
+          alert(`Mata pelajaran ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}!`);
+      } catch (error) {
+          console.error("Error toggling exam status:", error);
+          alert("Gagal mengubah status mata pelajaran.");
+      }
+  };
+
+  const handleDeleteExam = async (examId: string, examTitle: string) => {
+      if (!confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${examTitle}" beserta seluruh soalnya? Tindakan ini tidak dapat dibatalkan.`)) return;
+      
+      try {
+          await db.deleteExam(examId);
+          setExams(prev => prev.filter(ex => ex.id !== examId));
+          alert("Mata pelajaran berhasil dihapus!");
+      } catch (error) {
+          console.error("Error deleting exam:", error);
+          alert("Gagal menghapus mata pelajaran.");
+      }
+  };
+
   const handleEditQuestion = (q: Question) => {
       setEditingQuestion(q);
       setTargetExamForAdd(viewingQuestionsExam);
@@ -1596,13 +1621,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {exams.map(ex => (
-                              <div key={ex.id} className="bg-white p-5 rounded-xl border hover:shadow-lg transition cursor-pointer group" onClick={() => setViewingQuestionsExam(ex)}>
+                              <div key={ex.id} className={`bg-white p-5 rounded-xl border hover:shadow-lg transition cursor-pointer group relative ${!ex.isActive ? 'opacity-60 grayscale' : ''}`} onClick={() => setViewingQuestionsExam(ex)}>
                                   <div className="flex justify-between items-start mb-4">
-                                      <div className="bg-blue-50 p-3 rounded-lg group-hover:bg-blue-100 transition"><Database size={24} className="text-blue-600"/></div>
-                                      <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">{ex.questionCount} Items</span>
+                                      <div className={`p-3 rounded-lg group-hover:bg-blue-100 transition ${ex.isActive ? 'bg-blue-50' : 'bg-gray-100'}`}>
+                                          <Database size={24} className={ex.isActive ? 'text-blue-600' : 'text-gray-400'}/>
+                                      </div>
+                                      <div className="flex flex-col items-end gap-2">
+                                          <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">{ex.questionCount} Items</span>
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${ex.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                              {ex.isActive ? 'Aktif' : 'Nonaktif'}
+                                          </span>
+                                      </div>
                                   </div>
                                   <h4 className="font-bold text-gray-800 text-lg mb-1">{ex.subject}</h4>
-                                  <p className="text-sm text-gray-500 line-clamp-1">Token: {ex.token}</p>
+                                  <p className="text-sm text-gray-500 line-clamp-1 mb-4">Token: {ex.token}</p>
+                                  
+                                  <div className="flex justify-end gap-2 pt-3 border-t" onClick={e => e.stopPropagation()}>
+                                      <button 
+                                          onClick={() => handleToggleExamStatus(ex)}
+                                          className={`p-2 rounded-lg transition flex items-center gap-1 text-xs font-bold ${ex.isActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
+                                          title={ex.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                                      >
+                                          {ex.isActive ? <XCircle size={16}/> : <CheckCircle size={16}/>}
+                                          {ex.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                                      </button>
+                                      <button 
+                                          onClick={() => handleDeleteExam(ex.id, ex.subject)}
+                                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition flex items-center gap-1 text-xs font-bold"
+                                          title="Hapus Mapel"
+                                      >
+                                          <Trash2 size={16}/>
+                                          Hapus
+                                      </button>
+                                  </div>
                               </div>
                           ))}
                       </div>
@@ -1629,12 +1680,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           </thead>
                           <tbody className="divide-y">
                               {exams.map(ex => (
-                                  <tr key={ex.id}>
-                                      <td className="p-3 font-medium">{ex.title}</td>
+                                  <tr key={ex.id} className={!ex.isActive ? 'bg-gray-50 opacity-70' : ''}>
+                                      <td className="p-3 font-medium">
+                                          <div className="flex flex-col">
+                                              <span>{ex.title}</span>
+                                              {!ex.isActive && <span className="text-[10px] text-red-600 font-bold uppercase">Nonaktif</span>}
+                                          </div>
+                                      </td>
                                       <td className="p-3">
                                           <div className="flex flex-col">
                                               <span className="font-bold">{ex.examDate ? new Date(ex.examDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</span>
-                                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-1">{ex.session || '08:00 - 10:00'}</span>
+                                              <span className="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-1">Mulai Pukul: {ex.session || '07:00'}</span>
                                           </div>
                                       </td>
                                       <td className="p-3">{ex.durationMinutes} Menit</td>
@@ -2086,8 +2142,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                      </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Waktu Ujian</label>
-                                     <input type="text" className="border rounded-lg p-2 w-full text-sm font-medium" placeholder="Contoh: 08:00 - 10:00" value={editSession} onChange={e => setEditSession(e.target.value)} />
+                                    <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Waktu Mulai Ujian</label>
+                                     <input type="time" className="border rounded-lg p-2 w-full text-sm font-medium" value={editSession} onChange={e => setEditSession(e.target.value)} />
                                 </div>
                            </div>
                       </div>

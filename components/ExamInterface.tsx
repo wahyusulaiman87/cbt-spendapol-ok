@@ -113,6 +113,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
   // Anti Cheat States
   const [isFrozen, setIsFrozen] = useState(false);
   const [freezeTimeLeft, setFreezeTimeLeft] = useState(0);
+  const [freezeReason, setFreezeReason] = useState("");
 
   // Lightbox State
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -191,29 +192,74 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        triggerCheatingAlert();
+        triggerCheatingAlert("Tab switching detected!");
       }
     };
     const handleBlur = () => {
-       triggerCheatingAlert();
+       triggerCheatingAlert("Window focus lost!");
+    };
+    
+    // Screenshot detection (best effort)
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // PrintScreen detection
+        if (e.key === 'PrintScreen') {
+            triggerCheatingAlert("Screenshot attempt detected!");
+            // Try to clear clipboard if possible (limited browser support)
+            navigator.clipboard.writeText("");
+        }
+        
+        // Common screenshot shortcuts
+        // Windows: Meta+Shift+S or Alt+PrintScreen
+        // Mac: Meta+Shift+3 or Meta+Shift+4
+        const isWinScreenshot = e.metaKey && e.shiftKey && e.key === 'S';
+        const isMacScreenshot = e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4');
+        
+        if (isWinScreenshot || isMacScreenshot) {
+            triggerCheatingAlert("Screenshot shortcut detected!");
+        }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        return false;
+    };
+
+    const handleCopy = (e: ClipboardEvent) => {
+        e.preventDefault();
+        triggerCheatingAlert("Copy attempt detected!");
+        return false;
+    };
+
+    const handleBeforePrint = () => {
+        triggerCheatingAlert("Print attempt detected!");
     };
 
     window.addEventListener('blur', handleBlur);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('copy', handleCopy);
+    window.addEventListener('beforeprint', handleBeforePrint);
 
     return () => {
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('copy', handleCopy);
+      window.removeEventListener('beforeprint', handleBeforePrint);
     };
   }, [cheatingAttempts, settings.antiCheat, isFrozen, showScoreModal]);
 
-  const triggerCheatingAlert = () => {
+  const triggerCheatingAlert = (reason: string = "Violation detected!") => {
     // Only alert if exam is active (score modal not shown) and not already frozen
     if (showScoreModal || isFrozen) return;
 
     if (settings.antiCheat.enableSound) {
         playAlertSound();
     }
+    
+    setFreezeReason(reason);
     
     // CALCULATE EXPONENTIAL FREEZE TIME (Jos Jis System)
     // Attempt 1: 15s * 2^0 = 15s
@@ -526,7 +572,10 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
           <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center text-center p-8 backdrop-blur-xl">
               <ShieldAlert className="w-24 h-24 text-red-500 mb-6 animate-pulse" />
               <h2 className="text-4xl font-black text-white mb-2 uppercase tracking-widest">SISTEM TERKUNCI</h2>
-              <p className="text-red-400 text-xl mb-8 font-bold">Terdeteksi Aktivitas Mencurigakan! (Pelanggaran #{cheatingAttempts})</p>
+              <p className="text-red-400 text-xl mb-4 font-bold">Terdeteksi Aktivitas Mencurigakan! (Pelanggaran #{cheatingAttempts})</p>
+              <div className="bg-red-900/40 border border-red-500/50 px-6 py-3 rounded-xl mb-8">
+                  <p className="text-red-200 font-mono text-sm uppercase tracking-widest">{freezeReason}</p>
+              </div>
               
               <div className="w-64 h-64 relative flex items-center justify-center">
                   <div className="absolute inset-0 rounded-full border-4 border-gray-700"></div>
