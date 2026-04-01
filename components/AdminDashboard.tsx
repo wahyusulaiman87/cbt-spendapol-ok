@@ -202,8 +202,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           questions: [],
           questionCount: 0
       };
-      await db.createExam(newExam);
-      loadData();
+      try {
+          await db.createExam(newExam);
+          await loadData();
+          alert("Mata Pelajaran berhasil ditambahkan!");
+      } catch (error) {
+          console.error("Error creating exam:", error);
+          alert("Gagal menambahkan mata pelajaran. Pastikan database sudah diperbarui.");
+      }
   };
 
   // --- MAPPING LOGIC ---
@@ -561,6 +567,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                           if (!currentQuestion.correctIndices) currentQuestion.correctIndices = [];
                           if (!currentQuestion.correctIndices.includes(currentQuestion.options!.length)) {
                               currentQuestion.correctIndices.push(currentQuestion.options!.length);
+                          }
+                          // If we find score markers, it's likely a complex question
+                          if (currentQuestion.type === 'PG') {
+                              currentQuestion.type = 'PG_KOMPLEKS';
                           }
                       }
                   }

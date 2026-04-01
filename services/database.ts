@@ -120,7 +120,16 @@ export const db = {
         
         const mappedQuestions: Question[] = (questions || []).map((q: any) => {
             const type = (q["Tipe Soal"] as any) || 'PG';
-            const keyStr = q.Kunci ? q.Kunci.trim().toUpperCase() : 'A';
+            let keyStr = q["Kunci"] ? String(q["Kunci"]).trim().toUpperCase() : 'A';
+            
+            // Strip score markers from keyStr if present (e.g., "4^A;1^B" or "4^A")
+            if (keyStr.includes('^')) {
+                const parts = keyStr.split(/[;,]/);
+                keyStr = parts.map(p => {
+                    const caretIdx = p.indexOf('^');
+                    return caretIdx !== -1 ? p.substring(caretIdx + 1).trim() : p.trim();
+                }).join(';');
+            }
             
             let cIndex = 0;
             let cIndices: number[] = [];
@@ -131,25 +140,25 @@ export const db = {
                 if (cIndices.length > 0) cIndex = cIndices[0];
             } else {
                 cIndex = keyStr.charCodeAt(0) - 65;
-                if (cIndex < 0 || cIndex > 3) cIndex = 0;
+                if (cIndex < 0 || cIndex > 7) cIndex = 0;
             }
             
             return {
                 id: q.id,
                 subjectId: q.subject_id,
-                nomor: q.Nomor,
+                nomor: q["Nomor"],
                 type: type,
-                text: q.Soal || '',
+                text: q["Soal"] || '',
                 imgUrl: q["Url Gambar"] || undefined,
                 options: [
                     q["Opsi A"] || '', 
                     q["Opsi B"] || '', 
                     q["Opsi C"] || '', 
                     q["Opsi D"] || ''
-                ].filter(o => o !== '' || type === 'PG'), // Keep empty for PG to maintain index if needed, but usually better to filter
+                ].filter(o => o !== '' || type === 'PG'),
                 correctIndex: cIndex,
                 correctIndices: cIndices,
-                points: parseInt(q.Bobot || '10')
+                points: parseInt(q["Bobot"] || '10')
             };
         });
 
@@ -185,20 +194,34 @@ export const db = {
 
   // Updated to support Full Mapping
   updateExamMapping: async (examId: string, token: string, durationMinutes: number, examDate: string, endTime: string, session: string, schoolAccess: string[]): Promise<void> => {
-    await supabase.from('subjects').update({ 
+    const payload: any = { 
       token: token,
       duration: durationMinutes,
       exam_date: examDate,
-      end_time: endTime,
       session: session,
-      school_access: schoolAccess // Supabase handles array to JSONB auto conversion
-    }).eq('id', examId);
+      school_access: schoolAccess
+    };
+
+    try {
+        const { error } = await supabase.from('subjects').update({ ...payload, end_time: endTime }).eq('id', examId);
+        if (error && error.message.includes('column "end_time" of relation "subjects" does not exist')) {
+            await supabase.from('subjects').update(payload).eq('id', examId);
+        } else if (error) throw error;
+    } catch (err) {
+        await supabase.from('subjects').update(payload).eq('id', examId);
+    }
   },
 
   updateExamStatus: async (examId: string, isActive: boolean): Promise<void> => {
-    await supabase.from('subjects').update({ 
-      is_active: isActive
-    }).eq('id', examId);
+    try {
+        const { error } = await supabase.from('subjects').update({ 
+          is_active: isActive
+        }).eq('id', examId);
+        if (error) throw error;
+    } catch (err) {
+        console.error("Error updating exam status:", err);
+        throw new Error("Gagal mengubah status. Pastikan database sudah diperbarui dengan kolom 'is_active'.");
+    }
   },
 
   deleteExam: async (examId: string): Promise<void> => {
@@ -206,14 +229,23 @@ export const db = {
   },
 
   createExam: async (exam: Exam): Promise<void> => {
-    const payload = {
+    const payload: any = {
         name: exam.title,
         duration: exam.durationMinutes,
         question_count: 0,
-        token: exam.token,
-        is_active: true
+        token: exam.token
     };
-    await supabase.from('subjects').insert(payload);
+    
+    // Try to include is_active, but handle if column doesn't exist yet
+    try {
+        const { error } = await supabase.from('subjects').insert({ ...payload, is_active: true });
+        if (error && error.message.includes('column "is_active" of relation "subjects" does not exist')) {
+            await supabase.from('subjects').insert(payload);
+        } else if (error) throw error;
+    } catch (err) {
+        // Fallback for older schema
+        await supabase.from('subjects').insert(payload);
+    }
   },
 
   addQuestions: async (examId: string, questions: Question[]): Promise<void> => {

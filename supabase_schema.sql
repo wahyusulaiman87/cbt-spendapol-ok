@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS subjects (
     duration INTEGER NOT NULL DEFAULT 90,
     question_count INTEGER DEFAULT 0,
     token TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
     exam_date TEXT, -- Store as string for simplicity in this app's logic
+    end_time TEXT,
     session TEXT,
     school_access JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
