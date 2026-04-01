@@ -1,10 +1,38 @@
 // Simple beep generator to avoid external asset dependencies
+let audioCtx: AudioContext | null = null;
+
+export const initAudio = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
+    }
+    
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {
+    console.error("Audio initialization failed", e);
+  }
+};
+
 export const playAlertSound = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
     
-    const ctx = new AudioContext();
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
+    }
+
+    const ctx = audioCtx;
+    
+    // Resume context if it's suspended (common on mobile)
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
     
     const playBeep = (startTime: number, duration: number, frequency: number) => {
       const oscillator = ctx.createOscillator();
@@ -26,11 +54,6 @@ export const playAlertSound = () => {
     playBeep(0, 0.3, 880);
     playBeep(0.4, 0.3, 880);
     playBeep(0.8, 0.5, 600);
-
-    // Close context after beeps
-    setTimeout(() => {
-      ctx.close();
-    }, 1500);
 
   } catch (e) {
     console.error("Audio playback failed", e);

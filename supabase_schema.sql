@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS students (
     password TEXT NOT NULL DEFAULT '12345',
     is_login BOOLEAN DEFAULT FALSE,
     status TEXT DEFAULT 'idle', -- 'idle', 'blocked', 'finished'
+    cheating_attempts INTEGER DEFAULT 0,
+    current_exam_id UUID REFERENCES subjects(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

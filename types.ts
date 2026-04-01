@@ -21,6 +21,8 @@ export interface User {
   gender?: string;
   birthDate?: string;
   isLocked?: boolean;
+  cheatingAttempts?: number;
+  currentExamId?: string;
 }
 
 export type QuestionType = 'PG' | 'PG_KOMPLEKS' | 'PG_BS' | 'URAIAN';

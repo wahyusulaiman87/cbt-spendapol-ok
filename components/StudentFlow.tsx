@@ -3,6 +3,7 @@ import { User, Exam, AppSettings } from '../types';
 import { db } from '../services/database'; 
 import { UserCircle, RefreshCcw, Lock, CheckCircle, Play, Calendar, XCircle } from 'lucide-react';
 import { BackgroundShapes } from './BackgroundShapes';
+import { initAudio } from '../utils/sound';
 
 interface StudentFlowProps {
   user: User;
@@ -97,6 +98,7 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
 
   const handleStartTest = () => {
     if (selectedExam) {
+      initAudio();
       // Clear local flow persistence as we move to actual exam
       sessionStorage.removeItem('das_student_flow_step');
       sessionStorage.removeItem('das_student_flow_exam');

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import JSZip from 'jszip';
 import { User, Exam, UserRole, Question, QuestionType, ExamResult, AppSettings } from '../types';
 import { db } from '../services/database'; 
-import { Plus, BookOpen, Save, LogOut, Loader2, Key, RotateCcw, Clock, Upload, Download, FileText, LayoutDashboard, Settings, Printer, Filter, Calendar, FileSpreadsheet, Lock, Link, Edit, ShieldAlert, Activity, ClipboardList, Search, Unlock, Trash2, Database, School, Shuffle, X, CheckSquare, Map, CalendarDays, Flame, Volume2, AlertTriangle, UserX, Info, Check, Monitor, Users, GraduationCap, CheckCircle, XCircle, ArrowLeft, BarChart3, PieChart, Menu } from 'lucide-react';
+import { Plus, BookOpen, Save, LogOut, Loader2, Key, RotateCcw, Clock, Upload, Download, FileText, LayoutDashboard, Settings, Printer, Filter, Calendar, FileSpreadsheet, Lock, Link, Edit, ShieldAlert, Activity, ClipboardList, Search, Unlock, Trash2, Database, School, Shuffle, X, CheckSquare, Map, CalendarDays, Flame, Volume2, AlertTriangle, UserX, Info, Check, Monitor, Users, GraduationCap, CheckCircle, XCircle, ArrowLeft, BarChart3, PieChart, Menu, RefreshCcw } from 'lucide-react';
 
 interface AdminDashboardProps {
   user: User;
@@ -173,6 +173,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
   useEffect(() => {
     loadData();
+    
+    // Set up real-time listeners
+    const userSub = db.listenToUsers((updatedUsers) => {
+        setUsers(updatedUsers);
+    });
+    
+    const resultSub = db.listenToResults((updatedResults) => {
+        setResults(updatedResults);
+    });
+    
+    return () => {
+        userSub.unsubscribe();
+        resultSub.unsubscribe();
+    };
   }, []);
 
   const loadData = async () => {
@@ -1470,33 +1484,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {results.filter(r => r.cheatingAttempts > 0).length === 0 ? (
+                            {users.filter(u => (u.cheatingAttempts || 0) > 0).length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="p-8 text-center text-gray-400 italic">
                                         Tidak ada pelanggaran terdeteksi saat ini.
                                     </td>
                                 </tr>
                             ) : (
-                                results
-                                .filter(r => r.cheatingAttempts > 0)
-                                .sort((a, b) => b.cheatingAttempts - a.cheatingAttempts)
-                                .map(r => (
-                                    <tr key={r.id} className="hover:bg-red-50/30 transition">
-                                        <td className="p-3 font-bold text-gray-800">{r.studentName}</td>
-                                        <td className="p-3 text-gray-600">{users.find(u => u.id === r.studentId)?.school || '-'}</td>
-                                        <td className="p-3 text-gray-600">{r.examTitle}</td>
+                                users
+                                .filter(u => (u.cheatingAttempts || 0) > 0)
+                                .sort((a, b) => (b.cheatingAttempts || 0) - (a.cheatingAttempts || 0))
+                                .map(u => (
+                                    <tr key={u.id} className="hover:bg-red-50/30 transition">
+                                        <td className="p-3 font-bold text-gray-800">{u.name}</td>
+                                        <td className="p-3 text-gray-600">{u.school}</td>
+                                        <td className="p-3 text-gray-600">
+                                            {exams.find(e => e.id === u.currentExamId)?.title || 'Sedang Ujian'}
+                                        </td>
                                         <td className="p-3 text-center">
                                             <span className="inline-flex items-center justify-center px-3 py-1 bg-red-100 text-red-700 rounded-full font-bold text-xs border border-red-200 shadow-sm animate-pulse">
-                                                {r.cheatingAttempts}x
+                                                {u.cheatingAttempts}x
                                             </span>
                                         </td>
                                         <td className="p-3 text-center">
                                             <button 
-                                                onClick={() => handleResetViolation(r.id)}
+                                                onClick={() => handleResetViolation(u.id)}
                                                 className="bg-white border border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-400 px-3 py-1 rounded text-xs font-bold flex items-center justify-center mx-auto transition shadow-sm"
                                                 title="Reset Status Pelanggaran"
                                             >
-                                                <RotateCcw size={12} className="mr-1"/> Reset
+                                                <RefreshCcw size={12} className="mr-1"/> Reset
                                             </button>
                                         </td>
                                     </tr>

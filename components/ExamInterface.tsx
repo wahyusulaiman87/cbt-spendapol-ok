@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Exam, ExamResult, User, Question, AppSettings } from '../types';
 import { playAlertSound } from '../utils/sound';
-import { Timer, ChevronRight, ChevronLeft, Grid3X3, Trophy, CheckCircle, ShieldAlert, ZoomIn, X, Maximize2, Clock } from 'lucide-react';
+import { Timer, ChevronRight, ChevronLeft, Grid3X3, Trophy, CheckCircle, ShieldAlert, ZoomIn, X, Maximize2, Clock, Check } from 'lucide-react';
 import { db } from '../services/database'; // SWITCHED TO REAL DB
 import { Confetti } from './Confetti';
 
@@ -272,7 +272,12 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
     setFreezeTimeLeft(penaltyDuration);
     setIsFrozen(true);
 
-    setCheatingAttempts(prev => prev + 1);
+    setCheatingAttempts(prev => {
+        const next = prev + 1;
+        // UPDATE REALTIME DB
+        db.updateStudentViolation(user.id, next, exam.id);
+        return next;
+    });
   };
 
   const handleSingleChoice = (optionIndex: number) => {
@@ -305,6 +310,11 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
     newAnswers[currentQuestionIndex] = { ...current, [optionIndex]: value };
     setAnswers(newAnswers);
   };
+
+  // Reset violations on start
+  useEffect(() => {
+    db.resetStudentViolation(user.id);
+  }, []);
 
   const toggleDoubt = () => {
     const newDoubts = [...markedDoubts];
@@ -442,15 +452,15 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                         <div className="flex gap-2">
                             <button 
                                 onClick={() => handleBinaryChoice(idx, 'B')}
-                                className={`w-10 h-10 rounded-lg font-bold transition-all ${ (answers[currentQuestionIndex] || {})[idx] === 'B' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }`}
+                                className={`w-10 h-10 rounded-lg font-bold transition-all flex items-center justify-center ${ (answers[currentQuestionIndex] || {})[idx] === 'B' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }`}
                             >
-                                B
+                                { (answers[currentQuestionIndex] || {})[idx] === 'B' ? <Check size={20} /> : 'B' }
                             </button>
                             <button 
                                 onClick={() => handleBinaryChoice(idx, 'S')}
-                                className={`w-10 h-10 rounded-lg font-bold transition-all ${ (answers[currentQuestionIndex] || {})[idx] === 'S' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }`}
+                                className={`w-10 h-10 rounded-lg font-bold transition-all flex items-center justify-center ${ (answers[currentQuestionIndex] || {})[idx] === 'S' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200' }`}
                             >
-                                S
+                                { (answers[currentQuestionIndex] || {})[idx] === 'S' ? <Check size={20} /> : 'S' }
                             </button>
                         </div>
                     </div>

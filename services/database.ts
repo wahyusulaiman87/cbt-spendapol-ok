@@ -373,6 +373,29 @@ export const db = {
       return Promise.resolve();
   },
 
+  updateStudentViolation: async (studentId: string, attempts: number, examId: string): Promise<void> => {
+    try {
+        await supabase.from('students').update({ 
+            cheating_attempts: attempts,
+            current_exam_id: examId,
+            status: 'blocked' // Optional: block student if violation detected
+        }).eq('id', studentId);
+    } catch (err) {
+        console.error("Error updating student violation:", err);
+    }
+  },
+
+  resetStudentViolation: async (studentId: string): Promise<void> => {
+    try {
+        await supabase.from('students').update({ 
+            cheating_attempts: 0,
+            status: 'idle'
+        }).eq('id', studentId);
+    } catch (err) {
+        console.error("Error resetting student violation:", err);
+    }
+  },
+
   getUsers: async (): Promise<User[]> => {
     const { data } = await supabase.from('students').select('*').order('school', { ascending: true });
     if (!data) return [];
@@ -387,6 +410,8 @@ export const db = {
         password: u.password,
         status: u.status,
         isLogin: u.is_login,
+        cheatingAttempts: u.cheating_attempts || 0,
+        currentExamId: u.current_exam_id,
         grade: 6
     }));
   },
@@ -402,6 +427,26 @@ export const db = {
       }));
       const { error } = await supabase.from('students').upsert(payload, { onConflict: 'nisn' });
       if (error) throw error;
+  },
+
+  listenToUsers: (callback: (users: User[]) => void) => {
+    return supabase
+      .channel('students-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, async () => {
+        const users = await db.getUsers();
+        callback(users);
+      })
+      .subscribe();
+  },
+
+  listenToResults: (callback: (results: ExamResult[]) => void) => {
+    return supabase
+      .channel('results-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, async () => {
+        const results = await db.getAllResults();
+        callback(results);
+      })
+      .subscribe();
   },
 
   addUser: async (user: User): Promise<void> => {
