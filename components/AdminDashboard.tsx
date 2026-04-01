@@ -98,6 +98,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
   const [isWordGuideOpen, setIsWordGuideOpen] = useState(false);
   const [targetExamForAdd, setTargetExamForAdd] = useState<Exam | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   
   // MANUAL QUESTION FORM
   const [nqType, setNqType] = useState<QuestionType>('PG');
@@ -152,6 +153,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setExams(e);
     setUsers(u); 
     setResults(r);
+    
+    if (viewingQuestionsExam) {
+        const updated = e.find(exam => exam.id === viewingQuestionsExam.id);
+        if (updated) setViewingQuestionsExam(updated);
+    }
+    
     setIsLoadingData(false);
   };
 
@@ -248,7 +255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       if (!targetExamForAdd) return;
       if (!nqText.trim()) return alert("Teks soal wajib diisi!");
       const newQuestion: Question = {
-          id: `manual`,
+          id: editingQuestion ? editingQuestion.id : `manual-${Date.now()}`,
           type: nqType,
           text: nqText,
           imgUrl: nqImg || undefined,
@@ -257,17 +264,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           correctIndex: nqCorrectIndex,
           correctIndices: nqCorrectIndices,
       };
-      await db.addQuestions(targetExamForAdd.id, [newQuestion]);
-      setIsAddQuestionModalOpen(false);
-      // Reset form
-      setNqText('');
-      setNqImg('');
-      setNqOptions(['', '', '', '']);
-      setNqCorrectIndex(0);
-      setNqCorrectIndices([]);
-      setNqPoints(10);
-      loadData();
-      alert("Soal berhasil ditambahkan!");
+
+      try {
+          if (editingQuestion) {
+              await db.updateQuestion(editingQuestion.id, newQuestion);
+              alert("Soal berhasil diperbarui!");
+          } else {
+              await db.addQuestions(targetExamForAdd.id, [newQuestion]);
+              alert("Soal berhasil ditambahkan!");
+          }
+          
+          setIsAddQuestionModalOpen(false);
+          setEditingQuestion(null);
+          // Reset form
+          setNqText('');
+          setNqImg('');
+          setNqOptions(['', '', '', '']);
+          setNqCorrectIndex(0);
+          setNqCorrectIndices([]);
+          setNqPoints(10);
+          loadData();
+      } catch (error) {
+          console.error("Error saving question:", error);
+          alert("Gagal menyimpan soal.");
+      }
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+      if (!viewingQuestionsExam) return;
+      if (!confirm("Apakah Anda yakin ingin menghapus soal ini?")) return;
+      
+      try {
+          await db.deleteQuestion(questionId, viewingQuestionsExam.id);
+          loadData();
+          alert("Soal berhasil dihapus!");
+      } catch (error) {
+          console.error("Error deleting question:", error);
+          alert("Gagal menghapus soal.");
+      }
+  };
+
+  const handleEditQuestion = (q: Question) => {
+      setEditingQuestion(q);
+      setTargetExamForAdd(viewingQuestionsExam);
+      setNqType(q.type);
+      setNqText(q.text);
+      setNqImg(q.imgUrl || '');
+      setNqOptions(q.options.length > 0 ? [...q.options] : ['', '', '', '']);
+      setNqCorrectIndex(q.correctIndex || 0);
+      setNqCorrectIndices(q.correctIndices || []);
+      setNqPoints(q.points);
+      setIsAddQuestionModalOpen(true);
   };
 
   const downloadQuestionTemplate = () => {
@@ -446,7 +493,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   }
                   currentQuestion = {
                       id: `word-${Math.random().toString(36).substr(2, 9)}`,
-                      text: html.replace(new RegExp(qMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ''),
+                      text: html.replace(/^(\s*<[^>]+>)*\s*\d+\s*[\.\)]\s*/i, ''),
                       type: 'PG',
                       options: [],
                       correctIndices: [],
@@ -461,7 +508,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               // Option pattern: "a. ", "b. ", "a) ", etc.
               const oMatch = text.match(/^([a-e])\s*[\.\)]\s*(.*)/i);
               if (oMatch) {
-                  let optionText = html.replace(new RegExp(oMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*'), 'i'), '');
+                  let optionText = html.replace(/^(\s*<[^>]+>)*\s*[a-e]\s*[\.\)]\s*/i, '');
                   if (!optionText.trim() && oMatch[2]) optionText = oMatch[2]; // Fallback to text if HTML replace failed
                   
                   // Check for score in option (e.g., "1^Semarang" or "4^Pernyataan Benar")
@@ -1508,11 +1555,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                                   {q.options.map((opt, idx) => (
                                                       <div key={idx} className={`text-xs p-2 rounded border flex items-start gap-2 ${q.correctIndex === idx || (q.correctIndices && q.correctIndices.includes(idx)) ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-600'}`}>
                                                           <span className="font-bold">{String.fromCharCode(65+idx)}.</span>
-                                                          <div dangerouslySetInnerHTML={{ __html: opt }}></div>
+                                                          <div className="q-content" dangerouslySetInnerHTML={{ __html: opt }}></div>
                                                       </div>
                                                   ))}
                                               </div>
                                           )}
+                                      </div>
+                                      <div className="flex flex-col gap-2 ml-4">
+                                          <button 
+                                              onClick={() => handleEditQuestion(q)}
+                                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                              title="Edit Soal"
+                                          >
+                                              <Edit size={18} />
+                                          </button>
+                                          <button 
+                                              onClick={() => handleDeleteQuestion(q.id)}
+                                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                              title="Hapus Soal"
+                                          >
+                                              <Trash2 size={18} />
+                                          </button>
                                       </div>
                                   </div>
                               ))}
@@ -2134,7 +2197,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       {isAddQuestionModalOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 h-[90vh] overflow-y-auto animate-in zoom-in-95">
-                  <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg">Tambah Soal Manual</h3><button onClick={() => setIsAddQuestionModalOpen(false)}><X/></button></div>
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-bold text-lg">{editingQuestion ? 'Edit Soal' : 'Tambah Soal Manual'}</h3>
+                      <button onClick={() => {setIsAddQuestionModalOpen(false); setEditingQuestion(null);}}><X/></button>
+                  </div>
                   <div className="space-y-4">
                       <select className="border rounded p-2 w-full" value={nqType} onChange={e => {
                           const type = e.target.value as QuestionType;

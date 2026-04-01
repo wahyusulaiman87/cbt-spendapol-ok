@@ -341,6 +341,45 @@ export const db = {
     await supabase.from('students').delete().eq('id', id);
   },
 
+  updateQuestion: async (questionId: string, q: Question): Promise<void> => {
+      const keyMap = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      let keyChar = 'A';
+      
+      if (q.type === 'PG_KOMPLEKS' || q.type === 'PG_BS') {
+          keyChar = (q.correctIndices || []).map(idx => keyMap[idx]).join(";");
+      } else if (q.type === 'PG') {
+          keyChar = q.correctIndex !== undefined ? keyMap[q.correctIndex] : 'A';
+      } else {
+          keyChar = '';
+      }
+
+      const payload = {
+          "Tipe Soal": q.type,
+          "Soal": q.text,
+          "Opsi A": q.options[0] || '',
+          "Opsi B": q.options[1] || '',
+          "Opsi C": q.options[2] || '',
+          "Opsi D": q.options[3] || '',
+          "Kunci": keyChar,
+          "Bobot": String(q.points),
+          "Url Gambar": q.imgUrl || ''
+      };
+      
+      const { error } = await supabase.from('questions').update(payload).eq('id', questionId);
+      if (error) throw error;
+  },
+
+  deleteQuestion: async (questionId: string, examId: string): Promise<void> => {
+      const { error } = await supabase.from('questions').delete().eq('id', questionId);
+      if (error) throw error;
+
+      // Update question count in subjects table
+      const { count } = await supabase.from('questions').select('*', { count: 'exact', head: true }).eq('subject_id', examId);
+      if (count !== null) {
+          await supabase.from('subjects').update({ question_count: count }).eq('id', examId);
+      }
+  },
+
   resetUserStatus: async (userId: string): Promise<void> => {
     await supabase.from('students').update({ is_login: false, status: 'idle' }).eq('id', userId);
   },

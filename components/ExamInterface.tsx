@@ -299,8 +299,9 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
   };
 
   const finishExam = async () => {
-    const score = calculateScore();
-    setFinalScore(score);
+    const rawScore = calculateScore();
+    const scaledScore = maxPossibleScore > 0 ? Math.round((rawScore / maxPossibleScore) * 100) : 0;
+    setFinalScore(scaledScore);
     
     // Clear persistence on finish
     localStorage.removeItem(storageKey);
@@ -311,7 +312,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
       studentName: user.name,
       examId: exam.id,
       examTitle: exam.title,
-      score,
+      score: scaledScore,
       totalQuestions: activeQuestions.length,
       cheatingAttempts,
       submittedAt: new Date().toISOString()
@@ -357,7 +358,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                             <div className="w-8 h-8 rounded-full border-2 border-gray-300 mr-3 flex-shrink-0 flex items-center justify-center radio-dot transition-all font-bold text-gray-400" style={{ '--tw-border-color': themeColor } as React.CSSProperties}>
                                 {String.fromCharCode(65+idx)}
                             </div>
-                            <div className={`${getFontSizeClass()} text-gray-700`} dangerouslySetInnerHTML={{ __html: opt }}></div>
+                            <div className={`${getFontSizeClass()} text-gray-700 q-content`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                         </div>
                     </label>
                 ))}
@@ -379,7 +380,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                             <div className="w-6 h-6 rounded border-2 border-gray-300 mr-3 flex-shrink-0 flex items-center justify-center peer-checked:bg-blue-50 peer-checked:border-blue-500">
                                 <CheckCircle size={14} className="text-white opacity-0 peer-checked:opacity-100" />
                             </div>
-                            <div className={`${getFontSizeClass()} text-gray-700`} dangerouslySetInnerHTML={{ __html: opt }}></div>
+                            <div className={`${getFontSizeClass()} text-gray-700 q-content`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                         </div>
                     </label>
                 ))}
@@ -391,7 +392,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                 <p className="text-sm italic mb-2" style={{ color: themeColor }}>* Tentukan Benar (B) atau Salah (S) untuk setiap pernyataan</p>
                 {q.options?.map((opt, idx) => (
                     <div key={idx} className="w-full p-3 rounded-lg border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition-all">
-                        <div className={`${getFontSizeClass()} text-gray-700 flex-1 mr-4`} dangerouslySetInnerHTML={{ __html: opt }}></div>
+                        <div className={`${getFontSizeClass()} text-gray-700 flex-1 mr-4 q-content`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                         <div className="flex gap-2">
                             <button 
                                 onClick={() => handleBinaryChoice(idx, 'B')}
@@ -562,7 +563,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                   
                   {/* Motivational Quote */}
                   <p className="text-gray-600 mb-6 italic text-sm">
-                      "{getMotivation(finalScore, maxPossibleScore, user.name)}"
+                      "{getMotivation(finalScore, 100, user.name)}"
                   </p>
                   
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 mb-8 border border-blue-200 shadow-inner">
@@ -655,7 +656,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                      </div>
                  </div>
             )}
-            <div className={`${getFontSizeClass()} text-gray-800 leading-relaxed`} dangerouslySetInnerHTML={{ __html: currentQ.text }}></div>
+            <div className={`${getFontSizeClass()} text-gray-800 leading-relaxed q-content`} dangerouslySetInnerHTML={{ __html: currentQ.text }}></div>
         </div>
 
         {/* Vertical Divider (Hidden on mobile) */}
