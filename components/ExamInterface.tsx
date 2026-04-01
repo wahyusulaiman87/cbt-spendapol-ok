@@ -274,10 +274,11 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
 
     setCheatingAttempts(prev => {
         const next = prev + 1;
-        // UPDATE REALTIME DB
-        db.updateStudentViolation(user.id, next, exam.id);
         return next;
     });
+    
+    // UPDATE REALTIME DB (Jos Jis System)
+    db.updateStudentViolation(user.id, cheatingAttempts + 1, exam.id);
   };
 
   const handleSingleChoice = (optionIndex: number) => {
@@ -428,13 +429,13 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({ user, exam, onComp
                     <label key={idx} className="cursor-pointer group flex items-start">
                         <input 
                             type="checkbox" 
-                            className="peer sr-only"
+                            className="peer sr-only exam-checkbox"
                             checked={(answers[currentQuestionIndex] || []).includes(idx)}
                             onChange={() => handleMultiChoice(idx)}
                         />
                         <div className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all flex items-center group-hover:border-blue-400 peer-checked:bg-blue-50 peer-checked:border-blue-500">
-                            <div className="w-6 h-6 rounded border-2 border-gray-300 mr-3 flex-shrink-0 flex items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-600">
-                                <CheckCircle size={14} className="text-white opacity-0 peer-checked:opacity-100" />
+                            <div className="w-6 h-6 rounded border-2 border-gray-300 mr-3 flex-shrink-0 flex items-center justify-center check-box transition-all">
+                                <CheckCircle size={14} className="text-white opacity-0 transition-opacity" />
                             </div>
                             <div className={`${getFontSizeClass()} text-gray-700 q-content`} dangerouslySetInnerHTML={{ __html: opt }}></div>
                         </div>

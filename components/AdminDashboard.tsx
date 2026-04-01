@@ -151,11 +151,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [resultSchoolFilter, setResultSchoolFilter] = useState<string>('ALL'); // For Results
   const [cardSchoolFilter, setCardSchoolFilter] = useState<string>('ALL'); // For Cards
   const [monitoringSearch, setMonitoringSearch] = useState<string>('');
-  const [printDate, setPrintDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+  const now = new Date();
+  const localToday = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0') + '-' + now.getDate().toString().padStart(2, '0');
+  const [printDate, setPrintDate] = useState(localToday); // YYYY-MM-DD
   
   // GRAPH FILTERS
   const [graphFilterMode, setGraphFilterMode] = useState<'SCHEDULED' | 'ALL'>('SCHEDULED');
-  const [graphDate, setGraphDate] = useState(new Date().toISOString().split('T')[0]);
+  const [graphDate, setGraphDate] = useState(localToday);
   const [selectedSchoolTooltip, setSelectedSchoolTooltip] = useState<{name: string, value: number, x: number, y: number} | null>(null);
 
   // MONITORING BULK ACTIONS
@@ -260,7 +262,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setEditingExam(exam);
       setEditToken(exam.token);
       setEditDuration(exam.durationMinutes);
-      setEditDate(exam.examDate || new Date().toISOString().split('T')[0]);
+      const now = new Date();
+      const localToday = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0') + '-' + now.getDate().toString().padStart(2, '0');
+      setEditDate(exam.examDate || localToday);
       setEditSession(exam.session || '08:00');
       setEditEndTime(exam.endTime || '10:00');
       setEditSchoolAccess(exam.schoolAccess || []); 
@@ -981,7 +985,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       const finished = studentsInSchool.filter(u => u.status === 'finished').length;
       
       // Get exam mapping for today
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const today = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0') + '-' + now.getDate().toString().padStart(2, '0');
       const todayExam = exams.find(e => e.examDate === today && e.schoolAccess?.includes(schoolName));
       
       return { notLogin, working, finished, total: studentsInSchool.length, todayExamTitle: todayExam?.title || '-' };

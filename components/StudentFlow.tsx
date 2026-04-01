@@ -151,7 +151,7 @@ export const StudentFlow: React.FC<StudentFlowProps> = ({ user, onStartExam, onL
                     
                     // Real-time start check
                     const now = new Date();
-                    const todayStr = now.toISOString().split('T')[0];
+                    const todayStr = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0') + '-' + now.getDate().toString().padStart(2, '0');
                     const currentTimeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
                     
                     const isToday = exam.examDate === todayStr;

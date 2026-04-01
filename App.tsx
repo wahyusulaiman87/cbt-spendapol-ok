@@ -85,7 +85,8 @@ const App: React.FC = () => {
         const myExams = allExams.filter(e => e.schoolAccess && e.schoolAccess.includes(user.school || ''));
         
         // Simple YYYY-MM-DD comparison for "Today"
-        const todayStr = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const todayStr = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0') + '-' + now.getDate().toString().padStart(2, '0');
         
         // Check if ANY exam is scheduled for today
         const hasExamToday = myExams.some(e => e.examDate === todayStr);
