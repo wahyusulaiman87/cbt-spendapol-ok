@@ -180,8 +180,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const loadData = async () => {
     setIsLoadingData(true);
     const e = await db.getExams(); 
-    const u = await db.getUsers();
-    const r = await db.getAllResults();
+    const u = await db.getUsers(1, 1000);
+    const r = await db.getAllResults(1, 1000);
     setExams(e);
     setUsers(u); 
     setResults(r);

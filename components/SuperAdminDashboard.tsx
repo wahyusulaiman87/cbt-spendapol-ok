@@ -38,7 +38,7 @@ export const SuperAdminDashboard: React.FC<Props> = ({ user, onLogout, settings,
     }, []);
 
     const loadData = () => {
-        db.getUsers().then(setUsers);
+        db.getUsers(1, 1000).then(setUsers);
     };
 
     const handleDeleteUser = async (id: string) => {
