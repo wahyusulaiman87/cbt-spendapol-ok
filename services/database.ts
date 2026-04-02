@@ -83,16 +83,27 @@ export const db = {
     }
 
     // 2. STUDENT CHECK (Table: students)
+    // Add a small random delay (0-500ms) to stagger concurrent login requests
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
+
     const { data, error } = await supabase
       .from('students')
       .select('id, name, nisn, password, school, status, is_login, cheating_attempts, current_exam_id')
       .eq('nisn', cleanInput)
       .single();
 
-    if (error || !data) return undefined;
+    if (error) {
+        console.error("Login error (Supabase):", error);
+        return undefined;
+    }
+    if (!data) {
+        console.error("Login error: No data found for NISN:", cleanInput);
+        return undefined;
+    }
 
     // Verify Password
     if (data.password !== password) {
+        console.error("Login error: Password mismatch for NISN:", cleanInput);
         return undefined;
     }
 
