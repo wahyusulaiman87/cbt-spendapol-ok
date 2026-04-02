@@ -85,7 +85,7 @@ export const db = {
     // 2. STUDENT CHECK (Table: students)
     const { data, error } = await supabase
       .from('students')
-      .select('*')
+      .select('id, name, nisn, password, school, status, is_login, cheating_attempts, current_exam_id')
       .eq('nisn', cleanInput)
       .single();
 
