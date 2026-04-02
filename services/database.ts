@@ -334,7 +334,9 @@ export const db = {
     await supabase.from('students').update({ status: 'finished' }).eq('id', result.studentId);
   },
 
-  getAllResults: async (): Promise<ExamResult[]> => {
+  getAllResults: async (page: number = 1, pageSize: number = 100): Promise<ExamResult[]> => {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
     const { data, error } = await supabase
         .from('results')
         .select(`
@@ -342,7 +344,8 @@ export const db = {
             students (name, school),
             subjects (name)
         `)
-        .order('timestamp', { ascending: false });
+        .order('timestamp', { ascending: false })
+        .range(from, to);
 
     if (error || !data) return [];
     
@@ -396,8 +399,14 @@ export const db = {
     }
   },
 
-  getUsers: async (): Promise<User[]> => {
-    const { data } = await supabase.from('students').select('*').order('school', { ascending: true });
+  getUsers: async (page: number = 1, pageSize: number = 100): Promise<User[]> => {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data } = await supabase
+        .from('students')
+        .select('*')
+        .order('school', { ascending: true })
+        .range(from, to);
     if (!data) return [];
 
     return data.map((u: any) => ({
@@ -429,76 +438,36 @@ export const db = {
       if (error) throw error;
   },
 
-  listenToUsers: (callback: (users: User[]) => void) => {
-    return supabase
-      .channel('students-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, async () => {
-        const users = await db.getUsers();
-        callback(users);
-      })
-      .subscribe();
-  },
-
-  listenToResults: (callback: (results: ExamResult[]) => void) => {
-    return supabase
-      .channel('results-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, async () => {
-        const results = await db.getAllResults();
-        callback(results);
-      })
-      .subscribe();
+  resetUserPassword: async (userId: string): Promise<void> => {
+    await supabase.from('students').update({ password: '12345' }).eq('id', userId);
   },
 
   addUser: async (user: User): Promise<void> => {
-      const payload = {
+      await supabase.from('students').insert({
           name: user.name,
-          nisn: user.nisn || user.username,
-          school: user.school || 'UMUM',
-          password: user.password || '12345',
+          nisn: user.nisn,
+          school: user.school,
+          password: user.password,
           is_login: false,
           status: 'idle'
-      };
-      const { error } = await supabase.from('students').insert(payload);
-      if (error) throw error;
+      });
   },
 
-  deleteUser: async (id: string): Promise<void> => {
-    await supabase.from('students').delete().eq('id', id);
+  deleteUser: async (userId: string): Promise<void> => {
+      await supabase.from('students').delete().eq('id', userId);
   },
 
-  updateQuestion: async (questionId: string, q: Question): Promise<void> => {
-      const keyMap = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-      let keyChar = 'A';
-      
-      if (q.type === 'PG_KOMPLEKS' || q.type === 'PG_BS') {
-          keyChar = (q.correctIndices || []).map(idx => keyMap[idx]).join(";");
-      } else if (q.type === 'PG') {
-          keyChar = q.correctIndex !== undefined ? keyMap[q.correctIndex] : 'A';
-      } else {
-          keyChar = '';
-      }
-
-      const payload = {
-          "Tipe Soal": q.type,
-          "Soal": q.text,
-          "Opsi A": q.options[0] || '',
-          "Opsi B": q.options[1] || '',
-          "Opsi C": q.options[2] || '',
-          "Opsi D": q.options[3] || '',
-          "Kunci": keyChar,
-          "Bobot": String(q.points),
-          "Url Gambar": q.imgUrl || ''
-      };
-      
-      const { error } = await supabase.from('questions').update(payload).eq('id', questionId);
-      if (error) throw error;
+  updateQuestion: async (questionId: string, question: Question): Promise<void> => {
+      await supabase.from('questions').update({
+          "Soal": question.text,
+          "Bobot": String(question.points),
+          "Url Gambar": question.imgUrl || ''
+      }).eq('id', questionId);
   },
 
   deleteQuestion: async (questionId: string, examId: string): Promise<void> => {
-      const { error } = await supabase.from('questions').delete().eq('id', questionId);
-      if (error) throw error;
-
-      // Update question count in subjects table
+      await supabase.from('questions').delete().eq('id', questionId);
+      // Also update question count
       const { count } = await supabase.from('questions').select('*', { count: 'exact', head: true }).eq('subject_id', examId);
       if (count !== null) {
           await supabase.from('subjects').update({ question_count: count }).eq('id', examId);
@@ -506,10 +475,6 @@ export const db = {
   },
 
   resetUserStatus: async (userId: string): Promise<void> => {
-    await supabase.from('students').update({ is_login: false, status: 'idle' }).eq('id', userId);
-  },
-
-  resetUserPassword: async (userId: string): Promise<void> => {
-    await supabase.from('students').update({ password: '12345' }).eq('id', userId);
+      await supabase.from('students').update({ status: 'idle', is_login: false }).eq('id', userId);
   }
 };

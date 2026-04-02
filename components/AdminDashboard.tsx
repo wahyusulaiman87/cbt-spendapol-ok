@@ -175,20 +175,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
   useEffect(() => {
     loadData();
-    
-    // Set up real-time listeners
-    const userSub = db.listenToUsers((updatedUsers) => {
-        setUsers(updatedUsers);
-    });
-    
-    const resultSub = db.listenToResults((updatedResults) => {
-        setResults(updatedResults);
-    });
-    
-    return () => {
-        userSub.unsubscribe();
-        resultSub.unsubscribe();
-    };
   }, []);
 
   const loadData = async () => {
@@ -1242,6 +1228,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     // --- DEFAULT MAIN DASHBOARD VIEW ---
     return (
         <div className="animate-in fade-in">
+            <div className="flex justify-end mb-4">
+                <button 
+                    onClick={loadData} 
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-700 transition"
+                >
+                    <RefreshCcw size={16} />
+                    Refresh Data
+                </button>
+            </div>
             {/* Top Cards Grid - 1 Col on Mobile, 4 Col on Large */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {/* Total Mapel */}
