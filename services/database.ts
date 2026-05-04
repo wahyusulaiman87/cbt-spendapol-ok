@@ -468,6 +468,16 @@ export const db = {
       await supabase.from('students').delete().eq('id', userId);
   },
 
+  deleteUsers: async (userIds: string[]): Promise<void> => {
+      await supabase.from('students').delete().in('id', userIds);
+  },
+
+  deleteAllStudents: async (): Promise<void> => {
+      // In Supabase, if we want to delete all we might need to be careful with RLS or just use a condition that is always true
+      const { error } = await supabase.from('students').delete().neq('id', 'placeholder-non-existent');
+      if (error) throw error;
+  },
+
   updateQuestion: async (questionId: string, question: Question): Promise<void> => {
       await supabase.from('questions').update({
           "Soal": question.text,

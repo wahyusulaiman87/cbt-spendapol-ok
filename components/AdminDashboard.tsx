@@ -921,6 +921,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       alert("Berhasil reset masal.");
   };
 
+  const handleBulkDeleteStudents = async () => {
+      if (!selectedStudentIds.length) return;
+      if (!confirm(`Hapus ${selectedStudentIds.length} siswa terpilih secara permanen?`)) return;
+      
+      setIsLoadingData(true);
+      try {
+          await db.deleteUsers(selectedStudentIds);
+          const totalDeleted = selectedStudentIds.length;
+          setSelectedStudentIds([]);
+          await loadData();
+          alert(`${totalDeleted} siswa berhasil dihapus.`);
+      } catch (error) {
+          console.error("Error bulk deleting students:", error);
+          alert("Gagal menghapus beberapa siswa.");
+      } finally {
+          setIsLoadingData(false);
+      }
+  };
+
+  const handleDeleteAllStudents = async () => {
+      if (!confirm("PERINGATAN! Anda akan menghapus SELURUH data peserta ujian. Tindakan ini tidak bisa dibatalkan! Apakah Anda yakin?")) return;
+      if (!confirm("KONFIRMASI TERAKHIR: Hapus semua data peserta?")) return;
+
+      setIsLoadingData(true);
+      try {
+          await db.deleteAllStudents();
+          await loadData();
+          alert("Seluruh data peserta berhasil dihapus.");
+      } catch (error) {
+          console.error("Error deleting all students:", error);
+          alert("Gagal menghapus seluruh data peserta.");
+      } finally {
+          setIsLoadingData(false);
+      }
+  };
+
   // Derived Values
   const schools = (Array.from(new Set(users.map(u => u.school || 'Unknown'))).filter(Boolean) as string[]).sort();
   const totalSchools = schools.length;
@@ -1819,9 +1855,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           {/* PESERTA */}
           {activeTab === 'PESERTA' && (
                <div className="bg-white rounded-xl shadow-sm border p-6 animate-in fade-in print:hidden">
-                   <div className="flex justify-between items-center mb-6">
-                       <h3 className="font-bold text-lg">Data Peserta</h3>
-                       <div className="flex gap-2">
+                   <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                       <div className="flex items-center gap-3">
+                           <h3 className="font-bold text-lg">Data Peserta</h3>
+                           <div className="flex items-center gap-2">
+                               {selectedStudentIds.length > 0 && (
+                                   <button 
+                                       onClick={handleBulkDeleteStudents} 
+                                       className="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold flex items-center hover:bg-red-200 transition border border-red-200"
+                                   >
+                                       <Trash2 size={12} className="mr-1"/> Hapus {selectedStudentIds.length} Terpilih
+                                   </button>
+                               )}
+                               <button 
+                                   onClick={handleDeleteAllStudents} 
+                                   className="bg-gray-100 text-gray-600 px-3 py-1 rounded text-xs font-bold flex items-center hover:bg-red-500 hover:text-white transition border border-gray-200"
+                               >
+                                   <X size={12} className="mr-1"/> Hapus Semua Peserta
+                               </button>
+                           </div>
+                       </div>
+                       <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
                            <button onClick={() => setIsAddStudentModalOpen(true)} className="bg-orange-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center hover:bg-orange-700 shadow-sm transition transform active:scale-95"><Plus size={16} className="mr-2"/> Tambah Peserta</button>
                             <button onClick={downloadStudentTemplate} className="bg-green-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center"><FileText size={16} className="mr-2"/> Template CSV</button>
                            <button onClick={triggerImportStudents} className="bg-blue-600 text-white px-3 py-2 rounded text-sm font-bold flex items-center hover:bg-blue-700"><Upload size={16} className="mr-2"/> Import Data</button>
@@ -1839,11 +1893,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                    </div>
                    <div className="overflow-x-auto border rounded bg-white">
                        <table className="w-full text-sm text-left">
-                           <thead className="bg-gray-50 font-bold border-b"><tr><th className="p-3">Nama</th><th className="p-3">NISN</th><th className="p-3">Kelas</th><th className="p-3 text-center">Kontrol</th></tr></thead>
+                           <thead className="bg-gray-50 font-bold border-b">
+                               <tr>
+                                   <th className="p-3 w-10 text-center">
+                                       <input 
+                                           type="checkbox" 
+                                           className="w-4 h-4 rounded cursor-pointer"
+                                           checked={getMonitoringUsers(selectedSchoolFilter).length > 0 && selectedStudentIds.length === getMonitoringUsers(selectedSchoolFilter).length}
+                                           onChange={() => toggleSelectAll(getMonitoringUsers(selectedSchoolFilter))}
+                                       />
+                                   </th>
+                                   <th className="p-3">Nama</th>
+                                   <th className="p-3">NISN</th>
+                                   <th className="p-3">Kelas</th>
+                                   <th className="p-3 text-center">Kontrol</th>
+                               </tr>
+                           </thead>
                            <tbody className="divide-y">
                                {getMonitoringUsers(selectedSchoolFilter).map(u => (
                                    <tr key={u.id} className="hover:bg-gray-50">
-                                       <td className="p-3">{u.name}</td><td className="p-3 font-mono">{u.nisn}</td><td className="p-3">{u.school}</td>
+                                       <td className="p-3 text-center">
+                                           <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 rounded cursor-pointer"
+                                                checked={selectedStudentIds.includes(u.id)}
+                                                onChange={() => toggleSelectOne(u.id)}
+                                           />
+                                       </td>
+                                       <td className="p-3 font-bold">{u.name}</td><td className="p-3 font-mono">{u.nisn}</td><td className="p-3">{u.school}</td>
                                        <td className="p-3 text-center flex justify-center gap-2">
                                            <button title="Reset Login (Unlock)" onClick={async () => { await db.resetUserStatus(u.id); alert('Status login siswa di-reset (Unlock).'); loadData(); }} className="text-yellow-600 bg-yellow-50 border border-yellow-200 p-1.5 rounded hover:bg-yellow-100 transition"><Unlock size={14}/></button>
                                            <button title="Reset Password (12345)" onClick={async () => { if(confirm('Reset password jadi 12345?')) { await db.resetUserPassword(u.id); alert('Password di-reset menjadi 12345'); } }} className="text-blue-600 bg-blue-50 border border-blue-200 p-1.5 rounded hover:bg-blue-100 transition"><Key size={14}/></button>
